@@ -77,6 +77,14 @@ pub fn to_base64_string(bytes: &[u8]) -> Result<String> {
   Ok(result)
 }
 
+pub fn fixed_xor(a_bytes: &[u8], b_bytes: &[u8]) -> Vec<u8> {
+  let mut result = Vec::new();
+  for (a, b) in a_bytes.iter().zip(b_bytes.iter()) {
+    result.push(a ^ b);
+  }
+  result
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -85,23 +93,29 @@ mod tests {
   fn test_from_hex_string() {
     let expected = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 10, 11, 12, 13, 14,
                         15];
-
-    let result = from_hex_string("000102030405060708090a0b0c0d0e0f0A0B0C0D0E0F");
-    match result {
+    match from_hex_string("000102030405060708090a0b0c0d0e0f0A0B0C0D0E0F") {
       Ok(actual) => assert_eq!(actual, expected),
       Err(e) => assert!(false, e.to_string()),
     };
   }
 
   #[test]
-  fn test_to_base64_string() {
+  fn test_challenge1() {
     let expected = String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t");
-
     let hex_bytes = from_hex_string("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d").unwrap();
-    let result = to_base64_string(&hex_bytes);
-    match result {
+    match to_base64_string(&hex_bytes) {
       Ok(actual) => assert_eq!(actual, expected),
       Err(e) => assert!(false, e.to_string()),
     };
+  }
+
+  #[test]
+  fn test_challenge2() {
+    let expected = from_hex_string("746865206b696420646f6e277420706c6179").unwrap();
+
+    let a_bytes = from_hex_string("1c0111001f010100061a024b53535009181c").unwrap();
+    let b_bytes = from_hex_string("686974207468652062756c6c277320657965").unwrap();
+    let actual = fixed_xor(&a_bytes, &b_bytes);
+    assert_eq!(actual, expected);
   }
 }
