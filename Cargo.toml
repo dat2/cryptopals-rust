@@ -1,0 +1,16 @@
+[package]
+name = "cryptopals-rust"
+version = "0.1.0"
+authors = ["Nicholas Dujay <nickdujay@gmail.com>"]
+
+[lib]
+name = "cryptopals"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cryptopals"
+path = "src/main.rs"
+
+[dependencies]
+error-chain = "^0.11"
+rust-crypto = "^0.2"
