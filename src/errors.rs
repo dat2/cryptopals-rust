@@ -1,4 +1,8 @@
 error_chain! {
+  foreign_links {
+    Io(::std::io::Error);
+  }
+
   errors {
     InvalidHexChar(c: char) {
       description("invalid hex char")

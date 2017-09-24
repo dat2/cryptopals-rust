@@ -3,13 +3,17 @@
 
 #[macro_use]
 extern crate error_chain;
+extern crate rayon;
 
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::iter;
+use std::str;
 
-mod errors;
+use rayon::prelude::*;
+
+pub mod errors;
 use errors::*;
 
 fn char_to_byte(c: char) -> Result<u8> {
@@ -23,9 +27,9 @@ pub fn from_hex_string(hex_str: &str) -> Result<Vec<u8>> {
 
   let mut result = Vec::new();
   for c in chars.chunks(2) {
-    let first_nybble = try!(char_to_byte(c[0]));
+    let first_nybble = char_to_byte(c[0])?;
     let second_nybble_opt = if c.len() > 1 {
-      Some(try!(char_to_byte(c[1])))
+      Some(char_to_byte(c[1])?)
     } else {
       None
     };
@@ -36,6 +40,14 @@ pub fn from_hex_string(hex_str: &str) -> Result<Vec<u8>> {
     }
   }
   Ok(result)
+}
+
+pub fn to_hex_string(bytes: &[u8]) -> String {
+  let mut result = String::new();
+  for byte in bytes {
+    result.push_str(&format!("{:X}", byte))
+  }
+  result
 }
 
 fn to_base64_char(byte: u8) -> Result<char> {
@@ -59,11 +71,11 @@ pub fn to_base64_string(bytes: &[u8]) -> Result<String> {
   let mut result = String::new();
   for chunk in bytes.chunks(3) {
     let first_index = chunk[0] >> 2;
-    result.push(try!(to_base64_char(first_index)));
+    result.push(to_base64_char(first_index)?);
 
     if chunk.len() > 1 {
       let second_index = ((chunk[0] & 0x03) << 4) | (chunk[1] >> 4);
-      result.push(try!(to_base64_char(second_index)));
+      result.push(to_base64_char(second_index)?);
     } else {
       result.push('=')
     }
@@ -71,11 +83,11 @@ pub fn to_base64_string(bytes: &[u8]) -> Result<String> {
     if chunk.len() > 2 {
       let third_index = ((chunk[1] & 0x0F) << 2) | (chunk[2] >> 6);
       let fourth_index = chunk[2] & 0x3F;
-      result.push(try!(to_base64_char(third_index)));
-      result.push(try!(to_base64_char(fourth_index)));
+      result.push(to_base64_char(third_index)?);
+      result.push(to_base64_char(fourth_index)?);
     } else {
       let third_index = (chunk[1] & 0x0F) << 2;
-      result.push(try!(to_base64_char(third_index)));
+      result.push(to_base64_char(third_index)?);
       result.push('=')
     }
   }
@@ -90,6 +102,7 @@ pub fn fixed_xor(a_bytes: &[u8], b_bytes: &[u8]) -> Vec<u8> {
   result
 }
 
+#[derive(Debug)]
 struct LetterCounter {
   letters: HashMap<char, usize>,
   penalty: usize,
@@ -109,7 +122,7 @@ impl LetterCounter {
     if (letter as char).is_ascii_alphabetic() {
       let letter_entry = self.letters.entry((letter as char).to_ascii_lowercase()).or_insert(0);
       *letter_entry += 1;
-    } else {
+    } else if letter != b' ' {
       self.penalty += 1;
     }
     self.total_count += 1;
@@ -117,38 +130,36 @@ impl LetterCounter {
 
   fn score(&self) -> f32 {
     let mut english_frequency = HashMap::new();
-    english_frequency.insert('a', 8.167);
-    english_frequency.insert('b', 1.492);
-    english_frequency.insert('c', 2.782);
-    english_frequency.insert('d', 4.253);
-    english_frequency.insert('e', 12.702);
-    english_frequency.insert('f', 2.228);
-    english_frequency.insert('g', 2.015);
-    english_frequency.insert('h', 6.094);
-    english_frequency.insert('i', 6.966);
-    english_frequency.insert('j', 0.153);
-    english_frequency.insert('k', 0.772);
-    english_frequency.insert('l', 4.025);
-    english_frequency.insert('m', 2.406);
-    english_frequency.insert('n', 6.749);
-    english_frequency.insert('o', 7.507);
-    english_frequency.insert('p', 1.929);
-    english_frequency.insert('q', 0.095);
-    english_frequency.insert('r', 5.987);
-    english_frequency.insert('s', 6.327);
-    english_frequency.insert('t', 9.056);
-    english_frequency.insert('u', 2.758);
-    english_frequency.insert('v', 0.978);
-    english_frequency.insert('w', 2.360);
-    english_frequency.insert('x', 0.150);
-    english_frequency.insert('y', 1.974);
-    english_frequency.insert('z', 0.074);
-
-    let total_count = self.total_count as f32;
+    english_frequency.insert('a', 0.08167);
+    english_frequency.insert('b', 0.01492);
+    english_frequency.insert('c', 0.02782);
+    english_frequency.insert('d', 0.04253);
+    english_frequency.insert('e', 0.12702);
+    english_frequency.insert('f', 0.02228);
+    english_frequency.insert('g', 0.02015);
+    english_frequency.insert('h', 0.06094);
+    english_frequency.insert('i', 0.06966);
+    english_frequency.insert('j', 0.00153);
+    english_frequency.insert('k', 0.00772);
+    english_frequency.insert('l', 0.04025);
+    english_frequency.insert('m', 0.02406);
+    english_frequency.insert('n', 0.06749);
+    english_frequency.insert('o', 0.07507);
+    english_frequency.insert('p', 0.01929);
+    english_frequency.insert('q', 0.00095);
+    english_frequency.insert('r', 0.05987);
+    english_frequency.insert('s', 0.06327);
+    english_frequency.insert('t', 0.09056);
+    english_frequency.insert('u', 0.02758);
+    english_frequency.insert('v', 0.00978);
+    english_frequency.insert('w', 0.02360);
+    english_frequency.insert('x', 0.00150);
+    english_frequency.insert('y', 0.01974);
+    english_frequency.insert('z', 0.00074);
 
     let mut result = 0.0;
     for (letter, frequency) in &english_frequency {
-      let self_frequency = self.letters.get(letter).cloned().unwrap_or(0) as f32 / total_count;
+      let self_frequency = (self.letters.get(letter).cloned().unwrap_or(0) as f32) / self.total_count as f32;
       result += (self_frequency - *frequency).abs();
     }
     result += self.penalty as f32;
@@ -156,7 +167,7 @@ impl LetterCounter {
   }
 }
 
-fn score_bytes(xor_bytes: &[u8]) -> f32 {
+pub fn english_error(xor_bytes: &[u8]) -> f32 {
   let mut counter = LetterCounter::new();
   for byte in xor_bytes {
     counter.count(*byte);
@@ -165,13 +176,21 @@ fn score_bytes(xor_bytes: &[u8]) -> f32 {
 }
 
 pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> Vec<u8> {
-  (0..255)
+  (0..255).into_par_iter()
     .map(|byte| {
-      let mask: Vec<_> = iter::repeat(byte).take(xor_bytes.len()).collect();
-      let xored = fixed_xor(xor_bytes, &mask);
-      let xored_score = score_bytes(&xored);
-      (xored_score, xored)
+      let mask: Vec<_> = iter::repeat(byte as u8).take(xor_bytes.len()).collect();
+      fixed_xor(xor_bytes, &mask)
     })
+    .map(|xored| (english_error(&xored), xored))
+    .min_by(|&(a_score, _), &(b_score, _)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .map(|(_, result)| result)
+    .unwrap()
+}
+
+pub fn detect_single_character_xor(xor_bytes: Vec<Vec<u8>>) -> Vec<u8> {
+  xor_bytes.par_iter()
+    .map(|bytes| decrypt_single_byte_xor_cipher(&bytes))
+    .map(|decrypted| (english_error(&decrypted), decrypted))
     .min_by(|&(a_score, _), &(b_score, _)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
     .map(|(_, result)| result)
     .unwrap()
