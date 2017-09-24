@@ -159,7 +159,8 @@ impl LetterCounter {
 
     let mut result = 0.0;
     for (letter, frequency) in &english_frequency {
-      let self_frequency = (self.letters.get(letter).cloned().unwrap_or(0) as f32) / self.total_count as f32;
+      let self_frequency = (self.letters.get(letter).cloned().unwrap_or(0) as f32) /
+                           self.total_count as f32;
       result += (self_frequency - *frequency).abs();
     }
     result += self.penalty as f32;
@@ -176,7 +177,8 @@ pub fn english_error(xor_bytes: &[u8]) -> f32 {
 }
 
 pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> Vec<u8> {
-  (0..255).into_par_iter()
+  (0..255)
+    .into_par_iter()
     .map(|byte| {
       let mask: Vec<_> = iter::repeat(byte as u8).take(xor_bytes.len()).collect();
       fixed_xor(xor_bytes, &mask)
@@ -202,7 +204,8 @@ fn encrypt_repeating_key(input_bytes: &[u8], key: &[u8]) -> Vec<u8> {
 }
 
 fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
-  a.iter().zip(b)
+  a.iter()
+    .zip(b)
     .map(|(&a_bits, &b_bits)| {
       let mut result = 0;
       let mut differing_bits = a_bits ^ b_bits;
@@ -225,8 +228,12 @@ mod tests {
   // challenge 1
   #[test]
   fn test_to_base64_string() {
-    let expected = String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t");
-    let hex_bytes = from_hex_string("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d").unwrap();
+    let expected = String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGE\
+      gcG9pc29ub3VzIG11c2hyb29t");
+    let hex_bytes = from_hex_string(
+      "49276d206b696c6c696e6720796f757220627261696e206c\
+       696b65206120706f69736f6e6f7573206d757368726f6f6d")
+      .unwrap();
     match to_base64_string(&hex_bytes) {
       Ok(actual) => assert_eq!(expected, actual),
       Err(e) => assert!(false, e.to_string()),
@@ -247,9 +254,14 @@ mod tests {
   // challenge 5
   #[test]
   fn test_encrypt_repeating_key() {
-    let expected = from_hex_string("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f").unwrap();
+    let expected = from_hex_string(
+      "0b3637272a2b2e63622c2e69692a23693a2a3c63\
+       24202d623d63343c2a26226324272765272a282b\
+       2f20430a652e2c652a3124333a653e2b2027630c\
+       692b20283165286326302e27282f").unwrap();
 
-    let input_string = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+    let input_string = "Burning 'em, if you ain't quick and nimble\n\
+                        I go crazy when I hear a cymbal";
     let key = "ICE";
     let actual = encrypt_repeating_key(input_string.as_bytes(), key.as_bytes());
     assert_eq!(expected, actual);
