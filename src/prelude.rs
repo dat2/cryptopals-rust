@@ -1,5 +1,6 @@
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufReader, Read};
+use std::io::prelude::*;
 use std::str;
 
 use openssl::symm::{Cipher, decrypt};
@@ -39,7 +40,7 @@ pub fn from_hex_string(hex_str: &str) -> Result<Vec<u8>> {
 pub fn to_hex_string(bytes: &[u8]) -> String {
   let mut result = String::new();
   for byte in bytes {
-    result.push_str(&format!("{:x}", byte))
+    result.push_str(&format!("{:02x}", byte))
   }
   result
 }
@@ -152,6 +153,19 @@ pub fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
       result
     })
     .sum()
+}
+
+pub fn read_hex_lines(file: &mut File) -> Result<Vec<Vec<u8>>> {
+  let f = BufReader::new(file);
+
+  let mut hex_bytes_list = Vec::new();
+  for line in f.lines() {
+    let string = line?;
+    let hex_bytes = from_hex_string(&string)?;
+    hex_bytes_list.push(hex_bytes);
+  }
+
+  Ok(hex_bytes_list)
 }
 
 pub fn read_base64_file(file: &mut File) -> Result<Vec<u8>> {

@@ -5,8 +5,6 @@ extern crate clap;
 extern crate cryptopals;
 
 use std::collections::BTreeMap;
-use std::io::BufReader;
-use std::io::prelude::*;
 use std::fs::File;
 use std::str;
 
@@ -62,14 +60,9 @@ fn challenge3() -> errors::Result<()> {
 }
 
 fn challenge4() -> errors::Result<()> {
-  let f = File::open("data/4.txt")?;
-  let f = BufReader::new(f);
+  let mut f = File::open("data/4.txt")?;
+  let hex_bytes_list = read_hex_lines(&mut f)?;
 
-  let mut hex_bytes_list = Vec::new();
-  for line in f.lines() {
-    let string = line?;
-    hex_bytes_list.push(from_hex_string(&string)?);
-  }
   let (out_bytes, _) = set1::detect_single_character_xor(hex_bytes_list);
   let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
 
@@ -127,6 +120,19 @@ fn challenge7() -> errors::Result<()> {
   Ok(())
 }
 
+fn challenge8() -> errors::Result<()> {
+  let mut f = File::open("data/8.txt")?;
+  let hex_bytes_list = read_hex_lines(&mut f)?;
+
+  let out_bytes = set1::detect_aes_ecb_mode(hex_bytes_list);
+
+  println!("challenge 8");
+  println!("result: {:?}", to_hex_string(&out_bytes));
+  println!();
+
+  Ok(())
+}
+
 fn set_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
     .map_err(|e| e.to_string())
@@ -136,7 +142,7 @@ fn set_validator(arg: String) -> Result<(), String> {
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
     .map_err(|e| e.to_string())
-    .and_then(|challenge| if challenge <= 7 { Ok(()) } else { Err("Challenge must be one of: [1..7]".to_owned()) })
+    .and_then(|challenge| if challenge <= 8 { Ok(()) } else { Err("Challenge must be one of: [1..8]".to_owned()) })
 }
 
 fn run() -> errors::Result<()> {
@@ -168,6 +174,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(5, challenge5);
   challenges_map.insert(6, challenge6);
   challenges_map.insert(7, challenge7);
+  challenges_map.insert(8, challenge8);
 
   // use arguments to determine what to run
   // TODO use set :)

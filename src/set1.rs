@@ -1,6 +1,6 @@
 use std::ascii::AsciiExt;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use std::iter;
 
 use itertools::Itertools;
@@ -154,4 +154,22 @@ pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
     })
     .map(|(decrypted, key, _)| (decrypted, key))
     .unwrap()
+}
+
+pub fn detect_aes_ecb_mode(hex_bytes_list: Vec<Vec<u8>>) -> Vec<u8> {
+  hex_bytes_list.iter()
+    .find(|bytes| {
+      let mut set = BTreeSet::new();
+      for chunk_iter in &bytes.into_iter().chunks(16) {
+        let chunk: Vec<_> = chunk_iter.into_iter().collect();
+        if let Some(_) = set.get(&chunk) {
+          return true;
+        } else {
+          set.insert(chunk);
+        }
+      }
+      false
+    })
+    .cloned()
+    .unwrap_or(Vec::new())
 }
