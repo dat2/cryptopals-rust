@@ -39,7 +39,7 @@ pub fn from_hex_string(hex_str: &str) -> Result<Vec<u8>> {
 pub fn to_hex_string(bytes: &[u8]) -> String {
   let mut result = String::new();
   for byte in bytes {
-    result.push_str(&format!("{:X}", byte))
+    result.push_str(&format!("{:x}", byte))
   }
   result
 }
@@ -167,48 +167,6 @@ pub fn aes_128_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  // challenge 1
-  #[test]
-  fn test_to_base64_string() {
-    let expected = String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGE\
-      gcG9pc29ub3VzIG11c2hyb29t");
-    let hex_bytes = from_hex_string(
-      "49276d206b696c6c696e6720796f757220627261696e206c\
-       696b65206120706f69736f6e6f7573206d757368726f6f6d")
-      .unwrap();
-    match to_base64_string(&hex_bytes) {
-      Ok(actual) => assert_eq!(expected, actual),
-      Err(e) => assert!(false, e.to_string()),
-    };
-  }
-
-  // challenge 2
-  #[test]
-  fn test_fixed_xor() {
-    let expected = from_hex_string("746865206b696420646f6e277420706c6179").unwrap();
-
-    let a_bytes = from_hex_string("1c0111001f010100061a024b53535009181c").unwrap();
-    let b_bytes = from_hex_string("686974207468652062756c6c277320657965").unwrap();
-    let actual = fixed_xor(&a_bytes, &b_bytes);
-    assert_eq!(expected, actual);
-  }
-
-  // challenge 5
-  #[test]
-  fn test_encrypt_repeating_key() {
-    let expected = from_hex_string(
-      "0b3637272a2b2e63622c2e69692a23693a2a3c63\
-       24202d623d63343c2a26226324272765272a282b\
-       2f20430a652e2c652a3124333a653e2b2027630c\
-       692b20283165286326302e27282f").unwrap();
-
-    let input_string = "Burning 'em, if you ain't quick and nimble\n\
-                        I go crazy when I hear a cymbal";
-    let key = "ICE";
-    let actual = encrypt_repeating_key(input_string.as_bytes(), key.as_bytes());
-    assert_eq!(expected, actual);
-  }
 
   // challenge 6
   #[test]

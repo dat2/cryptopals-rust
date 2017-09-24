@@ -82,7 +82,7 @@ pub fn english_error(xor_bytes: &[u8]) -> f32 {
   counter.score()
 }
 
-pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> (Vec<u8>,u8) {
+pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> (Vec<u8>, u8) {
   (0 as u8..255 as u8)
     .into_par_iter()
     .map(|byte| {
@@ -90,7 +90,9 @@ pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> (Vec<u8>,u8) {
       (fixed_xor(xor_bytes, &mask), byte)
     })
     .map(|(xored, byte)| (xored.clone(), byte, english_error(&xored)))
-    .min_by(|&(_, _, a_score), &(_, _, b_score)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .min_by(|&(_, _, a_score), &(_, _, b_score)| {
+      a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal)
+    })
     .map(|(xored, byte, _)| (xored, byte))
     .unwrap()
 }
@@ -99,7 +101,9 @@ pub fn detect_single_character_xor(xor_bytes: Vec<Vec<u8>>) -> (Vec<u8>, u8) {
   xor_bytes.par_iter()
     .map(|bytes| decrypt_single_byte_xor_cipher(&bytes))
     .map(|(decrypted, byte)| (decrypted.clone(), byte, english_error(&decrypted)))
-    .min_by(|&(_, _, a_score), &(_, _, b_score)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .min_by(|&(_, _, a_score), &(_, _, b_score)| {
+      a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal)
+    })
     .map(|(decrypted, byte, _)| (decrypted, byte))
     .unwrap()
 }
@@ -115,11 +119,14 @@ pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
 
       let first_hamming_distance = hamming_distance(&first_keysize_bytes, &second_keysize_bytes);
       let second_hamming_distance = hamming_distance(&third_keysize_bytes, &fourth_keysize_bytes);
-      let average_hamming_distance = (first_hamming_distance as f32 + second_hamming_distance as f32) / 2.0;
+      let average_hamming_distance =
+        (first_hamming_distance as f32 + second_hamming_distance as f32) / 2.0;
 
       (average_hamming_distance / (key_size as f32), key_size)
     })
-    .sorted_by(|&(a_score, _), &(b_score, _)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .sorted_by(|&(a_score, _), &(b_score, _)| {
+      a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal)
+    })
     .into_iter()
     .map(|(_, result)| result)
     .collect();
@@ -127,8 +134,7 @@ pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
   // for each key size, figure out the individual bytes of the key
   // by transposing the ciphertext into a list of blocks
   // and decrypting them
-  let keys: Vec<_> = key_sizes
-    .into_par_iter()
+  let keys: Vec<_> = key_sizes.into_par_iter()
     .map(|key_size| {
       (0..key_size)
       .into_par_iter()
@@ -140,11 +146,12 @@ pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
     .collect();
 
   // decrypt, return the one with the best score
-  keys
-    .into_par_iter()
+  keys.into_par_iter()
     .map(|key| (encrypt_repeating_key(input_bytes, &key), key))
     .map(|(decrypted, key)| (decrypted.clone(), key, english_error(&decrypted)))
-    .min_by(|&(_, _, a_score), &(_, _, b_score)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .min_by(|&(_, _, a_score), &(_, _, b_score)| {
+      a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal)
+    })
     .map(|(decrypted, key, _)| (decrypted, key))
     .unwrap()
 }
