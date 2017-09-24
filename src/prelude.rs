@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::io::prelude::*;
+use std::iter;
 use std::str;
 
 use openssl::symm::{Cipher, decrypt};
@@ -176,6 +177,14 @@ pub fn read_base64_file(file: &mut File) -> Result<Vec<u8>> {
 
 pub fn aes_128_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
   decrypt(Cipher::aes_128_ecb(), key, None, data).map_err(|e| e.into())
+}
+
+pub fn pkcs7_padding(data: &[u8], block_len: u8) -> Vec<u8> {
+  let padding = block_len - data.len() as u8;
+  let mut result = Vec::new();
+  result.extend(data);
+  result.extend(iter::repeat(padding).take(padding as usize));
+  result
 }
 
 #[cfg(test)]

@@ -20,10 +20,8 @@ fn challenge1() -> errors::Result<()> {
   let hex_bytes = from_hex_string("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d")?;
   let actual = to_base64_string(&hex_bytes)?;
 
-  println!("challenge 1");
   println!("expected : {}", expected);
   println!("actual   : {}", actual);
-  println!();
 
   assert_eq!(expected, actual);
 
@@ -37,10 +35,8 @@ fn challenge2() -> errors::Result<()> {
   let b_bytes = from_hex_string("686974207468652062756c6c277320657965")?;
   let actual = fixed_xor(&a_bytes, &b_bytes);
 
-  println!("challenge 2");
   println!("expected : {}", to_hex_string(&expected));
   println!("actual   : {}", to_hex_string(&actual));
-  println!();
 
   assert_eq!(expected, actual);
 
@@ -52,9 +48,7 @@ fn challenge3() -> errors::Result<()> {
   let (out_bytes, _) = set1::decrypt_single_byte_xor_cipher(&in_bytes);
   let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
 
-  println!("challenge 3");
   println!("result: {}", out_str);
-  println!();
 
   Ok(())
 }
@@ -66,9 +60,7 @@ fn challenge4() -> errors::Result<()> {
   let (out_bytes, _) = set1::detect_single_character_xor(hex_bytes_list);
   let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
 
-  println!("challenge 4");
   println!("result: {}", out_str);
-  println!();
 
   Ok(())
 }
@@ -80,10 +72,8 @@ fn challenge5() -> errors::Result<()> {
   let key = "ICE";
   let actual = encrypt_repeating_key(input_string.as_bytes(), key.as_bytes());
 
-  println!("challenge 5");
   println!("expected : {}", to_hex_string(&expected));
   println!("actual   : {}", to_hex_string(&actual));
-  println!();
 
   assert_eq!(expected, actual);
 
@@ -97,10 +87,8 @@ fn challenge6() -> errors::Result<()> {
   let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
   let out_key = unsafe { str::from_utf8_unchecked(&out_key_bytes) };
 
-  println!("challenge 6");
   println!("result: {}", out_str);
   println!("key: '{}'", out_key);
-  println!();
 
   Ok(())
 }
@@ -113,9 +101,7 @@ fn challenge7() -> errors::Result<()> {
   let out_bytes = aes_128_ecb_decrypt(key.as_bytes(), &data)?;
   let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
 
-  println!("challenge 7");
   println!("result: {}", out_str);
-  println!();
 
   Ok(())
 }
@@ -128,28 +114,46 @@ fn challenge8() -> errors::Result<()> {
 
   println!("challenge 8");
   println!("result: {:?}", to_hex_string(&out_bytes));
-  println!();
 
   Ok(())
 }
 
+fn challenge9() -> errors::Result<()> {
+  let expected = "YELLOW SUBMARINE\u{4}\u{4}\u{4}\u{4}";
+
+  let input = "YELLOW SUBMARINE";
+  let out_bytes = pkcs7_padding(input.as_bytes(), 20);
+  let actual = unsafe { str::from_utf8_unchecked(&out_bytes) };
+
+  println!("expected : {:?}", expected);
+  println!("actual   : {:?}", actual);
+
+  assert_eq!(expected, actual);
+
+  Ok(())
+}
+
+static MAX_SET: usize = 2;
+
 fn set_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
     .map_err(|e| e.to_string())
-    .and_then(|set| if set < 2 {
+    .and_then(|set| if set <= MAX_SET {
       Ok(())
     } else {
-      Err("Set must be one of: [1]".to_owned())
+      Err(format!("Set must be in [1..{}]", MAX_SET))
     })
 }
+
+static MAX_CHALLENGE: usize = 9;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
     .map_err(|e| e.to_string())
-    .and_then(|challenge| if challenge <= 8 {
+    .and_then(|challenge| if challenge <= MAX_CHALLENGE {
       Ok(())
     } else {
-      Err("Challenge must be one of: [1..8]".to_owned())
+      Err(format!("Challenge must be in [1..{}]", MAX_CHALLENGE))
     })
 }
 
@@ -183,16 +187,21 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(6, challenge6);
   challenges_map.insert(7, challenge7);
   challenges_map.insert(8, challenge8);
+  challenges_map.insert(9, challenge9);
 
   // use arguments to determine what to run
   // TODO use set :)
   if let Some(challenge_string) = matches.value_of("challenge") {
     let challenge: usize = challenge_string.parse()?;
     let challenge_func = challenges_map[&challenge];
+    println!("challenge {}", challenge);
     challenge_func()?;
+    println!();
   } else {
-    for (_, challenge_func) in &challenges_map {
+    for (challenge_number, challenge_func) in &challenges_map {
+      println!("challenge {}", challenge_number);
       challenge_func()?;
+      println!();
     }
   }
 
