@@ -1,10 +1,15 @@
 #![recursion_limit = "1024"]
+#![feature(ascii_ctype)]
 
 #[macro_use]
 extern crate error_chain;
 
-mod errors;
+use std::ascii::AsciiExt;
+use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::iter;
 
+mod errors;
 use errors::*;
 
 fn char_to_byte(c: char) -> Result<u8> {
@@ -83,6 +88,97 @@ pub fn fixed_xor(a_bytes: &[u8], b_bytes: &[u8]) -> Vec<u8> {
     result.push(a ^ b);
   }
   result
+}
+
+struct LetterCounter {
+  letters: HashMap<char, usize>,
+  penalty: usize
+}
+
+impl LetterCounter {
+  fn new() -> LetterCounter {
+    LetterCounter {
+      letters: HashMap::new(),
+      penalty: 0
+    }
+  }
+
+  fn count(&mut self, letter: u8) {
+    if (letter as char).is_ascii_alphabetic() {
+      let letter_entry = self.letters.entry((letter as char).to_ascii_lowercase()).or_insert(0);
+      *letter_entry += 1;
+    } else {
+      self.penalty += 1;
+    }
+  }
+
+  fn total_count(&self) -> usize {
+    let mut result = 0;
+    for (_, count) in &self.letters {
+      result += *count;
+    }
+    result
+  }
+
+  fn score(&self) -> f32 {
+    let mut english_frequency = HashMap::new();
+    english_frequency.insert('a', 8.167);
+    english_frequency.insert('b', 1.492);
+    english_frequency.insert('c', 2.782);
+    english_frequency.insert('d', 4.253);
+    english_frequency.insert('e', 12.702);
+    english_frequency.insert('f', 2.228);
+    english_frequency.insert('g', 2.015);
+    english_frequency.insert('h', 6.094);
+    english_frequency.insert('i', 6.966);
+    english_frequency.insert('j', 0.153);
+    english_frequency.insert('k', 0.772);
+    english_frequency.insert('l', 4.025);
+    english_frequency.insert('m', 2.406);
+    english_frequency.insert('n', 6.749);
+    english_frequency.insert('o', 7.507);
+    english_frequency.insert('p', 1.929);
+    english_frequency.insert('q', 0.095);
+    english_frequency.insert('r', 5.987);
+    english_frequency.insert('s', 6.327);
+    english_frequency.insert('t', 9.056);
+    english_frequency.insert('u', 2.758);
+    english_frequency.insert('v', 0.978);
+    english_frequency.insert('w', 2.360);
+    english_frequency.insert('x', 0.150);
+    english_frequency.insert('y', 1.974);
+    english_frequency.insert('z', 0.074);
+
+    let total_count = self.total_count() as f32;
+
+    let mut result = 0.0;
+    for (letter, frequency) in &english_frequency {
+      let self_frequency = self.letters.get(letter).cloned().unwrap_or(0) as f32 / total_count;
+      result += (self_frequency - *frequency).abs();
+    }
+    result += self.penalty as f32;
+    result
+  }
+}
+
+fn score_bytes(xor_bytes: &[u8]) -> f32 {
+  let mut counter = LetterCounter::new();
+  for byte in xor_bytes {
+    counter.count(*byte);
+  }
+  counter.score()
+}
+
+pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> Vec<u8> {
+  (0..255)
+    .map(|byte| {
+      let mask: Vec<_> = iter::repeat(byte).take(xor_bytes.len()).collect();
+      let xored = fixed_xor(xor_bytes, &mask);
+      (score_bytes(&xored), xored)
+    })
+    .min_by(|&(a_score, _), &(b_score,_)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .map(|(_, result)| result)
+    .unwrap()
 }
 
 #[cfg(test)]
