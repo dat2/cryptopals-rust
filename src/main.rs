@@ -122,7 +122,7 @@ fn challenge9() -> errors::Result<()> {
   let expected = "YELLOW SUBMARINE\u{4}\u{4}\u{4}\u{4}";
 
   let input = "YELLOW SUBMARINE";
-  let out_bytes = pkcs7_padding(input.as_bytes(), 20);
+  let out_bytes = pad_pkcs7(input.as_bytes(), 20);
   let actual = unsafe { str::from_utf8_unchecked(&out_bytes) };
 
   println!("expected : {:?}", expected);

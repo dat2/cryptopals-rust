@@ -179,12 +179,25 @@ pub fn aes_128_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
   decrypt(Cipher::aes_128_ecb(), key, None, data).map_err(|e| e.into())
 }
 
-pub fn pkcs7_padding(data: &[u8], block_len: u8) -> Vec<u8> {
+pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {
   let padding = block_len - data.len() as u8;
   let mut result = Vec::new();
   result.extend(data);
   result.extend(iter::repeat(padding).take(padding as usize));
   result
+}
+
+pub fn unpad_pkcs7(data: &[u8]) -> Result<Vec<u8>> {
+  let padding = data[data.len() - 1];
+  let padding_bytes: Vec<_> = iter::repeat(padding).take(padding as usize).collect();
+
+  if data[(data.len() - padding as usize) .. data.len()] == padding_bytes[..] {
+    let mut result = Vec::new();
+    result.extend(data.iter().take(data.len() - padding as usize));
+    Ok(result)
+  } else {
+    Err(ErrorKind::InvalidPkcs7Padding(data.to_vec()).into())
+  }
 }
 
 #[cfg(test)]
@@ -199,5 +212,21 @@ mod tests {
     let b = "wokka wokka!!!";
     let actual = hamming_distance(a.as_bytes(), b.as_bytes());
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_unpad_pkcs7_unpads() {
+    let expected = "YELLOW SUBMARINE";
+
+    let padded = "YELLOW SUBMARINE\u{4}\u{4}\u{4}\u{4}";
+    let out_bytes = unpad_pkcs7(padded.as_bytes()).unwrap();
+    let actual = unsafe { str::from_utf8_unchecked(&out_bytes) };
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_unpad_pkcs7_complains_when_wrong() {
+    let padded = "YELLOW SUBMARINE\u{1}\u{2}\u{3}\u{4}";
+    assert!(unpad_pkcs7(padded.as_bytes()).is_err());
   }
 }

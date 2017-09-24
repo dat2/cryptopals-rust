@@ -18,5 +18,9 @@ error_chain! {
       description("invalid base64 char")
       display("invalid base64 char: '{}'", c)
     }
+    InvalidPkcs7Padding(s: Vec<u8>) {
+      description("invalid pkcs7 padding")
+      display("invalid pkcs7 padding for string: {:?}", s)
+    }
   }
 }
