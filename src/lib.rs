@@ -201,6 +201,23 @@ fn encrypt_repeating_key(input_bytes: &[u8], key: &[u8]) -> Vec<u8> {
   fixed_xor(input_bytes, &repeated_key)
 }
 
+fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
+  a.iter().zip(b)
+    .map(|(&a_bits, &b_bits)| {
+      let mut result = 0;
+      let mut differing_bits = a_bits ^ b_bits;
+      while differing_bits != 0 {
+        if differing_bits & 0x01 == 1 {
+          result += 1;
+        }
+
+        differing_bits >>= 1;
+      }
+      result
+    })
+    .sum()
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -211,7 +228,7 @@ mod tests {
     let expected = String::from("SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t");
     let hex_bytes = from_hex_string("49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d").unwrap();
     match to_base64_string(&hex_bytes) {
-      Ok(actual) => assert_eq!(actual, expected),
+      Ok(actual) => assert_eq!(expected, actual),
       Err(e) => assert!(false, e.to_string()),
     };
   }
@@ -224,7 +241,7 @@ mod tests {
     let a_bytes = from_hex_string("1c0111001f010100061a024b53535009181c").unwrap();
     let b_bytes = from_hex_string("686974207468652062756c6c277320657965").unwrap();
     let actual = fixed_xor(&a_bytes, &b_bytes);
-    assert_eq!(actual, expected);
+    assert_eq!(expected, actual);
   }
 
   // challenge 5
@@ -235,6 +252,17 @@ mod tests {
     let input_string = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
     let key = "ICE";
     let actual = encrypt_repeating_key(input_string.as_bytes(), key.as_bytes());
+    assert_eq!(expected, actual);
+  }
+
+  // challenge 6
+  #[test]
+  fn test_hamming_distance() {
+    let expected = 37;
+
+    let a = "this is a test";
+    let b = "wokka wokka!!!";
+    let actual = hamming_distance(a.as_bytes(), b.as_bytes());
     assert_eq!(expected, actual);
   }
 }
