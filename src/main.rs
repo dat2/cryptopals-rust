@@ -42,10 +42,27 @@ fn challenge4() -> errors::Result<()> {
   Ok(())
 }
 
+fn challenge6() -> errors::Result<()> {
+  let mut f = File::open("data/6.txt")?;
+  let bytes = read_base64_file(&mut f)?;
+
+  let out_bytes = Vec::new();
+  let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
+
+  println!("challenge 6");
+  println!("file: {:?}", bytes);
+  println!("result: {:?}", out_str);
+
+  Ok(())
+}
+
 fn run() -> errors::Result<()> {
   challenge3()?;
-  println!("");
+  println!();
   challenge4()?;
+  println!();
+  challenge6()?;
+  println!();
   Ok(())
 }
 quick_main!(run);

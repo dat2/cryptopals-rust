@@ -12,5 +12,9 @@ error_chain! {
       description("invalid base64 index")
       display("invalid base64 index: '{}'", u)
     }
+    InvalidBase64Char(c: char) {
+      description("invalid base64 char")
+      display("invalid base64 char: '{}'", c)
+    }
   }
 }

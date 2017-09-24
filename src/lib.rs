@@ -8,7 +8,9 @@ extern crate rayon;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::cmp::Ordering;
+use std::fs::File;
 use std::iter;
+use std::io::Read;
 use std::str;
 
 use rayon::prelude::*;
@@ -16,20 +18,24 @@ use rayon::prelude::*;
 pub mod errors;
 use errors::*;
 
-fn char_to_byte(c: char) -> Result<u8> {
-  c.to_digit(16)
-    .map(|r| r as u8)
-    .ok_or(ErrorKind::InvalidHexChar(c).into())
+fn hex_byte_to_nybble(c: u8) -> Result<u8> {
+  if c >= b'A' && c <= b'F' {
+    Ok(c - b'A' + 10)
+  } else if c >= b'a' && c <= b'f' {
+    Ok(c - b'a' + 10)
+  } else if c >= b'0' && c <= b'9' {
+    Ok(c - b'0')
+  } else {
+    Err(ErrorKind::InvalidHexChar(c as char).into())
+  }
 }
 
 pub fn from_hex_string(hex_str: &str) -> Result<Vec<u8>> {
-  let chars: Vec<_> = hex_str.chars().collect();
-
   let mut result = Vec::new();
-  for c in chars.chunks(2) {
-    let first_nybble = char_to_byte(c[0])?;
+  for c in hex_str.as_bytes().chunks(2) {
+    let first_nybble = hex_byte_to_nybble(c[0])?;
     let second_nybble_opt = if c.len() > 1 {
-      Some(char_to_byte(c[1])?)
+      Some(hex_byte_to_nybble(c[1])?)
     } else {
       None
     };
@@ -52,11 +58,11 @@ pub fn to_hex_string(bytes: &[u8]) -> String {
 
 fn to_base64_char(byte: u8) -> Result<char> {
   if byte < 26 {
-    Ok((byte + ('A' as u8)) as char)
+    Ok((byte + b'A') as char)
   } else if byte < 52 {
-    Ok(((byte - 26) + ('a' as u8)) as char)
+    Ok((byte - 26 + b'a') as char)
   } else if byte < 62 {
-    Ok(((byte - 52) + ('0' as u8)) as char)
+    Ok((byte - 52 + b'0') as char)
   } else if byte == 62 {
     Ok('+')
   } else if byte == 63 {
@@ -67,7 +73,6 @@ fn to_base64_char(byte: u8) -> Result<char> {
 }
 
 pub fn to_base64_string(bytes: &[u8]) -> Result<String> {
-  println!("");
   let mut result = String::new();
   for chunk in bytes.chunks(3) {
     let first_index = chunk[0] >> 2;
@@ -91,6 +96,42 @@ pub fn to_base64_string(bytes: &[u8]) -> Result<String> {
       result.push('=')
     }
   }
+  Ok(result)
+}
+
+fn from_base64_byte(c: u8) -> Result<u8> {
+  if c == b'=' {
+    Ok(0)
+  } else if c == b'+' {
+    Ok(62)
+  } else if c == b'/' {
+    Ok(63)
+  } else if c >= b'A' && c <= b'Z' {
+    Ok(c - b'A')
+  } else if c >= b'a' && c <= b'z' {
+    Ok(c - b'a' + 26)
+  } else if c >= b'0' && c <= b'9' {
+    Ok(c - b'0' + 52)
+  } else {
+    Err(ErrorKind::InvalidBase64Char(c as char).into())
+  }
+}
+
+pub fn from_base64_string(base64_str: &str) -> Result<Vec<u8>> {
+
+  let mut result = Vec::new();
+
+  for chunk in base64_str.as_bytes().chunks(4) {
+    let first_index = from_base64_byte(chunk[0])?;
+    let second_index = from_base64_byte(chunk[1])?;
+    let third_index = from_base64_byte(chunk[2])?;
+    let fourth_index = from_base64_byte(chunk[3])?;
+
+    result.push((first_index << 2) | (second_index >> 4));
+    result.push(((second_index & 0x0F) << 4) | (third_index >> 2));
+    result.push(((third_index & 0x03) << 6) | fourth_index);
+  }
+
   Ok(result)
 }
 
@@ -119,8 +160,8 @@ impl LetterCounter {
   }
 
   fn count(&mut self, letter: u8) {
-    if (letter as char).is_ascii_alphabetic() {
-      let letter_entry = self.letters.entry((letter as char).to_ascii_lowercase()).or_insert(0);
+    if letter.is_ascii_alphabetic() {
+      let letter_entry = self.letters.entry((letter.to_ascii_lowercase() as char)).or_insert(0);
       *letter_entry += 1;
     } else if letter != b' ' {
       self.penalty += 1;
@@ -219,6 +260,12 @@ fn hamming_distance(a: &[u8], b: &[u8]) -> usize {
       result
     })
     .sum()
+}
+
+pub fn read_base64_file(file: &mut File) -> Result<Vec<u8>> {
+  let mut contents = String::new();
+  file.read_to_string(&mut contents)?;
+  from_base64_string(&contents.replace("\n", ""))
 }
 
 #[cfg(test)]
