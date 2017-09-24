@@ -57,12 +57,28 @@ fn challenge6() -> errors::Result<()> {
   Ok(())
 }
 
+fn challenge7() -> errors::Result<()> {
+  let key = "YELLOW SUBMARINE";
+  let mut f = File::open("data/7.txt")?;
+  let data = read_base64_file(&mut f)?;
+
+  let out_bytes = aes_128_ecb_decrypt(key.as_bytes(), &data)?;
+  let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
+
+  println!("challenge 7");
+  println!("result: {}", out_str);
+
+  Ok(())
+}
+
 fn run() -> errors::Result<()> {
-  challenge3()?;
-  println!();
-  challenge4()?;
-  println!();
-  challenge6()?;
+  // challenge3()?;
+  // println!();
+  // challenge4()?;
+  // println!();
+  // challenge6()?;
+  // println!();
+  challenge7()?;
   println!();
   Ok(())
 }

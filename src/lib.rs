@@ -5,6 +5,7 @@
 #[macro_use]
 extern crate error_chain;
 extern crate itertools;
+extern crate openssl;
 extern crate rayon;
 
 pub mod errors;

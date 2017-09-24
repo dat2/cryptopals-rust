@@ -1,6 +1,7 @@
 error_chain! {
   foreign_links {
     Io(::std::io::Error);
+    OpenSsl(::openssl::error::ErrorStack);
   }
 
   errors {

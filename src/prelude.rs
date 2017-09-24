@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::Read;
 use std::str;
 
+use openssl::symm::{Cipher, decrypt};
+
 use errors::*;
 
 fn hex_byte_to_nybble(c: u8) -> Result<u8> {
@@ -156,6 +158,10 @@ pub fn read_base64_file(file: &mut File) -> Result<Vec<u8>> {
   let mut contents = String::new();
   file.read_to_string(&mut contents)?;
   from_base64_string(&contents.replace("\n", ""))
+}
+
+pub fn aes_128_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+  decrypt(Cipher::aes_128_ecb(), key, None, data).map_err(|e| e.into())
 }
 
 #[cfg(test)]
