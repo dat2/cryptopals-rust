@@ -92,14 +92,16 @@ pub fn fixed_xor(a_bytes: &[u8], b_bytes: &[u8]) -> Vec<u8> {
 
 struct LetterCounter {
   letters: HashMap<char, usize>,
-  penalty: usize
+  penalty: usize,
+  total_count: usize,
 }
 
 impl LetterCounter {
   fn new() -> LetterCounter {
     LetterCounter {
       letters: HashMap::new(),
-      penalty: 0
+      penalty: 0,
+      total_count: 0,
     }
   }
 
@@ -110,14 +112,7 @@ impl LetterCounter {
     } else {
       self.penalty += 1;
     }
-  }
-
-  fn total_count(&self) -> usize {
-    let mut result = 0;
-    for (_, count) in &self.letters {
-      result += *count;
-    }
-    result
+    self.total_count += 1;
   }
 
   fn score(&self) -> f32 {
@@ -149,7 +144,7 @@ impl LetterCounter {
     english_frequency.insert('y', 1.974);
     english_frequency.insert('z', 0.074);
 
-    let total_count = self.total_count() as f32;
+    let total_count = self.total_count as f32;
 
     let mut result = 0.0;
     for (letter, frequency) in &english_frequency {
@@ -174,9 +169,10 @@ pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> Vec<u8> {
     .map(|byte| {
       let mask: Vec<_> = iter::repeat(byte).take(xor_bytes.len()).collect();
       let xored = fixed_xor(xor_bytes, &mask);
-      (score_bytes(&xored), xored)
+      let xored_score = score_bytes(&xored);
+      (xored_score, xored)
     })
-    .min_by(|&(a_score, _), &(b_score,_)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
+    .min_by(|&(a_score, _), &(b_score, _)| a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal))
     .map(|(_, result)| result)
     .unwrap()
 }
