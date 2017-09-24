@@ -136,13 +136,21 @@ fn challenge8() -> errors::Result<()> {
 fn set_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
     .map_err(|e| e.to_string())
-    .and_then(|set| if set < 2 { Ok(()) } else { Err("Set must be one of: [1]".to_owned()) })
+    .and_then(|set| if set < 2 {
+      Ok(())
+    } else {
+      Err("Set must be one of: [1]".to_owned())
+    })
 }
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
     .map_err(|e| e.to_string())
-    .and_then(|challenge| if challenge <= 8 { Ok(()) } else { Err("Challenge must be one of: [1..8]".to_owned()) })
+    .and_then(|challenge| if challenge <= 8 {
+      Ok(())
+    } else {
+      Err("Challenge must be one of: [1..8]".to_owned())
+    })
 }
 
 fn run() -> errors::Result<()> {
@@ -152,17 +160,17 @@ fn run() -> errors::Result<()> {
     .author("Nicholas Dujay <nickdujay@gmail.com>")
     .about("Runs Matasano's cryptopals challenges")
     .arg(Arg::with_name("set")
-        .short("s")
-        .long("set")
-        .help("Configures which set to run. If left out, it will run all sets.")
-        .takes_value(true)
-        .validator(set_validator))
+      .short("s")
+      .long("set")
+      .help("Configures which set to run. If left out, it will run all sets.")
+      .takes_value(true)
+      .validator(set_validator))
     .arg(Arg::with_name("challenge")
-        .short("c")
-        .long("challenge")
-        .help("Configures which challenge to run.")
-        .takes_value(true)
-        .validator(challenge_validator))
+      .short("c")
+      .long("challenge")
+      .help("Configures which challenge to run.")
+      .takes_value(true)
+      .validator(challenge_validator))
     .get_matches();
 
   // configure challenges hashmap

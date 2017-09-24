@@ -182,7 +182,6 @@ pub fn aes_128_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
 mod tests {
   use super::*;
 
-  // challenge 6
   #[test]
   fn test_hamming_distance() {
     let expected = 37;
