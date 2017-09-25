@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::iter;
 use std::str;
 
-use openssl::symm::{Cipher, Crypter, Mode, decrypt, encrypt};
+use openssl::symm::{Cipher, decrypt, encrypt};
 
 use errors::*;
 
@@ -183,15 +183,12 @@ pub fn aes_128_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
   decrypt(Cipher::aes_128_ecb(), key, None, data).map_err(|e| e.into())
 }
 
-// this is a copy of openssl::symm::decrypt, but with padding disabled on the Crypter
-pub fn aes_128_ecb_decrypt_simple(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
-  let mut c = Crypter::new(Cipher::aes_128_ecb(), Mode::Decrypt, key, None)?;
-  c.pad(false);
-  let mut out = vec![0; data.len() + Cipher::aes_128_ecb().block_size()];
-  let count = c.update(data, &mut out)?;
-  let rest = c.finalize(&mut out[count..])?;
-  out.truncate(count + rest);
-  Ok(out)
+pub fn aes_128_cbc_encrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+  encrypt(Cipher::aes_128_cbc(), key, Some(iv), data).map_err(|e| e.into())
+}
+
+pub fn aes_128_cbc_decrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+  decrypt(Cipher::aes_128_cbc(), key, Some(iv), data).map_err(|e| e.into())
 }
 
 pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {

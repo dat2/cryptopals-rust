@@ -26,7 +26,7 @@ impl LetterCounter {
 
   fn count(&mut self, letter: u8) {
     if letter.is_ascii_alphabetic() {
-      let letter_entry = self.letters.entry((letter.to_ascii_lowercase() as char)).or_insert(0);
+      let letter_entry = self.letters.entry(letter.to_ascii_lowercase() as char).or_insert(0);
       *letter_entry += 1;
     } else if letter != b' ' {
       self.penalty += 1;
@@ -97,9 +97,9 @@ pub fn decrypt_single_byte_xor_cipher(xor_bytes: &[u8]) -> (Vec<u8>, u8) {
     .unwrap()
 }
 
-pub fn detect_single_character_xor(xor_bytes: Vec<Vec<u8>>) -> (Vec<u8>, u8) {
+pub fn detect_single_character_xor(xor_bytes: &[Vec<u8>]) -> (Vec<u8>, u8) {
   xor_bytes.par_iter()
-    .map(|bytes| decrypt_single_byte_xor_cipher(&bytes))
+    .map(|bytes| decrypt_single_byte_xor_cipher(bytes))
     .map(|(decrypted, byte)| (decrypted.clone(), byte, english_error(&decrypted)))
     .min_by(|&(_, _, a_score), &(_, _, b_score)| {
       a_score.partial_cmp(&b_score).unwrap_or(Ordering::Equal)
@@ -112,13 +112,13 @@ pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
   // figure out the key sizes with the smallest hamming distance
   let key_sizes: Vec<_> = (2..40)
     .map(|key_size| {
-      let first_keysize_bytes = input_bytes.get(0..key_size).unwrap();
-      let second_keysize_bytes = input_bytes.get(key_size..(key_size * 2)).unwrap();
-      let third_keysize_bytes = input_bytes.get((key_size * 2)..(key_size * 3)).unwrap();
-      let fourth_keysize_bytes = input_bytes.get((key_size * 3)..(key_size * 4)).unwrap();
+      let first_keysize_bytes = &input_bytes[0..key_size];
+      let second_keysize_bytes = &input_bytes[key_size..(key_size * 2)];
+      let third_keysize_bytes = &input_bytes[(key_size * 2)..(key_size * 3)];
+      let fourth_keysize_bytes = &input_bytes[(key_size * 3)..(key_size * 4)];
 
-      let first_hamming_distance = hamming_distance(&first_keysize_bytes, &second_keysize_bytes);
-      let second_hamming_distance = hamming_distance(&third_keysize_bytes, &fourth_keysize_bytes);
+      let first_hamming_distance = hamming_distance(first_keysize_bytes, second_keysize_bytes);
+      let second_hamming_distance = hamming_distance(third_keysize_bytes, fourth_keysize_bytes);
       let average_hamming_distance =
         (first_hamming_distance as f32 + second_hamming_distance as f32) / 2.0;
 
@@ -156,13 +156,13 @@ pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
     .unwrap()
 }
 
-pub fn detect_aes_ecb_mode(hex_bytes_list: Vec<Vec<u8>>) -> Vec<u8> {
+pub fn detect_aes_ecb_mode(hex_bytes_list: &[Vec<u8>]) -> Vec<u8> {
   hex_bytes_list.iter()
     .find(|bytes| {
       let mut set = BTreeSet::new();
       for chunk_iter in &bytes.into_iter().chunks(16) {
         let chunk: Vec<_> = chunk_iter.into_iter().collect();
-        if let Some(_) = set.get(&chunk) {
+        if set.get(&chunk).is_some() {
           return true;
         } else {
           set.insert(chunk);
@@ -171,5 +171,5 @@ pub fn detect_aes_ecb_mode(hex_bytes_list: Vec<Vec<u8>>) -> Vec<u8> {
       false
     })
     .cloned()
-    .unwrap_or(Vec::new())
+    .unwrap_or_default()
 }

@@ -58,7 +58,7 @@ fn challenge4() -> errors::Result<()> {
   let mut f = File::open("data/4.txt")?;
   let ciphertext_bytes_list = read_hex_lines(&mut f)?;
 
-  let (plaintext_bytes, _) = set1::detect_single_character_xor(ciphertext_bytes_list);
+  let (plaintext_bytes, _) = set1::detect_single_character_xor(&ciphertext_bytes_list);
   let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
   println!("result: {}", plaintext);
@@ -111,7 +111,7 @@ fn challenge8() -> errors::Result<()> {
   let mut f = File::open("data/8.txt")?;
   let ciphertext_bytes_list = read_hex_lines(&mut f)?;
 
-  let ciphertext_bytes = set1::detect_aes_ecb_mode(ciphertext_bytes_list);
+  let ciphertext_bytes = set1::detect_aes_ecb_mode(&ciphertext_bytes_list);
 
   println!("challenge 8");
   println!("result: {:?}", to_hex_string(&ciphertext_bytes));
@@ -148,6 +148,15 @@ fn challenge10() -> errors::Result<()> {
   Ok(())
 }
 
+fn challenge11() -> errors::Result<()> {
+  let plaintext_key = "YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE";
+  let ciphertext_bytes = set2::encryption_oracle(plaintext_key.as_bytes())?;
+
+  println!("{:?}", ciphertext_bytes);
+
+  Ok(())
+}
+
 static MAX_SET: usize = 2;
 
 fn set_validator(arg: String) -> Result<(), String> {
@@ -160,7 +169,7 @@ fn set_validator(arg: String) -> Result<(), String> {
     })
 }
 
-static MAX_CHALLENGE: usize = 10;
+static MAX_CHALLENGE: usize = 11;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -204,6 +213,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(8, challenge8);
   challenges_map.insert(9, challenge9);
   challenges_map.insert(10, challenge10);
+  challenges_map.insert(11, challenge11);
 
   // use arguments to determine what to run
   // TODO use set :)

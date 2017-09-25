@@ -6,6 +6,9 @@
 extern crate error_chain;
 extern crate itertools;
 extern crate openssl;
+#[macro_use]
+extern crate lazy_static;
+extern crate rand;
 extern crate rayon;
 
 pub mod errors;
