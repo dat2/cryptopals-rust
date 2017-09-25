@@ -9,5 +9,6 @@ extern crate openssl;
 extern crate rayon;
 
 pub mod errors;
-pub mod set1;
 pub mod prelude;
+pub mod set1;
+pub mod set2;

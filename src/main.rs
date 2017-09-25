@@ -13,6 +13,7 @@ use clap::{App, Arg};
 use cryptopals::prelude::*;
 use cryptopals::errors;
 use cryptopals::set1;
+use cryptopals::set2;
 
 fn challenge1() -> errors::Result<()> {
 
@@ -44,23 +45,23 @@ fn challenge2() -> errors::Result<()> {
 }
 
 fn challenge3() -> errors::Result<()> {
-  let in_bytes = from_hex_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")?;
-  let (out_bytes, _) = set1::decrypt_single_byte_xor_cipher(&in_bytes);
-  let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
+  let ciphertext_bytes = from_hex_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")?;
+  let (plaintext_bytes, _) = set1::decrypt_single_byte_xor_cipher(&ciphertext_bytes);
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
-  println!("result: {}", out_str);
+  println!("result: {}", plaintext);
 
   Ok(())
 }
 
 fn challenge4() -> errors::Result<()> {
   let mut f = File::open("data/4.txt")?;
-  let hex_bytes_list = read_hex_lines(&mut f)?;
+  let ciphertext_bytes_list = read_hex_lines(&mut f)?;
 
-  let (out_bytes, _) = set1::detect_single_character_xor(hex_bytes_list);
-  let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
+  let (plaintext_bytes, _) = set1::detect_single_character_xor(ciphertext_bytes_list);
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
-  println!("result: {}", out_str);
+  println!("result: {}", plaintext);
 
   Ok(())
 }
@@ -82,13 +83,13 @@ fn challenge5() -> errors::Result<()> {
 
 fn challenge6() -> errors::Result<()> {
   let mut f = File::open("data/6.txt")?;
-  let bytes = read_base64_file(&mut f)?;
-  let (out_bytes, out_key_bytes) = set1::break_repeating_key_xor(&bytes);
-  let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
-  let out_key = unsafe { str::from_utf8_unchecked(&out_key_bytes) };
+  let ciphertext = read_base64_file(&mut f)?;
+  let (plaintext_bytes, key_bytes) = set1::break_repeating_key_xor(&ciphertext);
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let key = unsafe { str::from_utf8_unchecked(&key_bytes) };
 
-  println!("result: {}", out_str);
-  println!("key: '{}'", out_key);
+  println!("result: {}", plaintext);
+  println!("key: '{}'", key);
 
   Ok(())
 }
@@ -96,24 +97,24 @@ fn challenge6() -> errors::Result<()> {
 fn challenge7() -> errors::Result<()> {
   let key = "YELLOW SUBMARINE";
   let mut f = File::open("data/7.txt")?;
-  let data = read_base64_file(&mut f)?;
+  let ciphertext = read_base64_file(&mut f)?;
 
-  let out_bytes = aes_128_ecb_decrypt(key.as_bytes(), &data)?;
-  let out_str = unsafe { str::from_utf8_unchecked(&out_bytes) };
+  let plaintext_bytes = aes_128_ecb_decrypt(key.as_bytes(), &ciphertext)?;
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
-  println!("result: {}", out_str);
+  println!("result: {}", plaintext);
 
   Ok(())
 }
 
 fn challenge8() -> errors::Result<()> {
   let mut f = File::open("data/8.txt")?;
-  let hex_bytes_list = read_hex_lines(&mut f)?;
+  let ciphertext_bytes_list = read_hex_lines(&mut f)?;
 
-  let out_bytes = set1::detect_aes_ecb_mode(hex_bytes_list);
+  let ciphertext_bytes = set1::detect_aes_ecb_mode(ciphertext_bytes_list);
 
   println!("challenge 8");
-  println!("result: {:?}", to_hex_string(&out_bytes));
+  println!("result: {:?}", to_hex_string(&ciphertext_bytes));
 
   Ok(())
 }
@@ -121,14 +122,28 @@ fn challenge8() -> errors::Result<()> {
 fn challenge9() -> errors::Result<()> {
   let expected = "YELLOW SUBMARINE\u{4}\u{4}\u{4}\u{4}";
 
-  let input = "YELLOW SUBMARINE";
-  let out_bytes = pad_pkcs7(input.as_bytes(), 20);
-  let actual = unsafe { str::from_utf8_unchecked(&out_bytes) };
+  let to_pad = "YELLOW SUBMARINE";
+  let padded_bytes = pad_pkcs7(to_pad.as_bytes(), 20);
+  let actual = unsafe { str::from_utf8_unchecked(&padded_bytes) };
 
   println!("expected : {:?}", expected);
   println!("actual   : {:?}", actual);
 
   assert_eq!(expected, actual);
+
+  Ok(())
+}
+
+fn challenge10() -> errors::Result<()> {
+  let key = "YELLOW SUBMARINE";
+  let iv: Vec<_> = vec![0; 16];
+  let mut f = File::open("data/10.txt")?;
+  let ciphertext = read_base64_file(&mut f)?;
+
+  let plaintext_bytes = set2::aes_128_cbc_decrypt_manual(key.as_bytes(), &iv, &ciphertext)?;
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+
+  println!("result: {}", plaintext);
 
   Ok(())
 }
@@ -145,7 +160,7 @@ fn set_validator(arg: String) -> Result<(), String> {
     })
 }
 
-static MAX_CHALLENGE: usize = 9;
+static MAX_CHALLENGE: usize = 10;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -188,6 +203,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(7, challenge7);
   challenges_map.insert(8, challenge8);
   challenges_map.insert(9, challenge9);
+  challenges_map.insert(10, challenge10);
 
   // use arguments to determine what to run
   // TODO use set :)
