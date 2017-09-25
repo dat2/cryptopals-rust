@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use openssl::rand::rand_bytes;
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::{self, Rng};
@@ -37,23 +39,47 @@ lazy_static! {
   };
 }
 
-pub fn encryption_oracle(data: &[u8]) -> Result<Vec<u8>> {
+#[derive(Debug, PartialEq)]
+pub enum CipherMode {
+  ECB,
+  CBC
+}
+
+pub fn encryption_oracle(data: &[u8]) -> Result<(Vec<u8>, CipherMode)> {
 
   let mut rng = rand::thread_rng();
 
+  // generate random prefix
   let count = Range::new(5, 10);
   let mut prefix_bytes = vec![0; count.ind_sample(&mut rng)];
   rand_bytes(&mut prefix_bytes)?;
 
+  // prefix to the plaintext
   let mut plaintext = Vec::new();
   plaintext.extend(prefix_bytes);
   plaintext.extend(data);
 
   if rng.gen() {
-    aes_128_ecb_encrypt(&ORACLE_KEY, &plaintext)
+    let ciphertext = aes_128_ecb_encrypt(&ORACLE_KEY, &plaintext)?;
+    Ok((ciphertext, CipherMode::ECB))
   } else {
+    // random iv
     let mut iv = vec![0; 16];
     rand_bytes(&mut iv)?;
-    aes_128_cbc_encrypt(&ORACLE_KEY, &iv, &plaintext)
+
+    let ciphertext = aes_128_cbc_encrypt(&ORACLE_KEY, &iv, &plaintext)?;
+    Ok((ciphertext, CipherMode::CBC))
   }
+}
+
+pub fn detect_cipher_mode(ciphertext: &[u8]) -> CipherMode {
+  let mut set = BTreeSet::new();
+  for chunk in ciphertext.chunks(16) {
+    if set.get(&chunk).is_some() {
+      return CipherMode::ECB;
+    } else {
+      set.insert(chunk);
+    }
+  }
+  CipherMode::CBC
 }

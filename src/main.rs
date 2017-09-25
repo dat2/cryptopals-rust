@@ -149,10 +149,14 @@ fn challenge10() -> errors::Result<()> {
 }
 
 fn challenge11() -> errors::Result<()> {
-  let plaintext_key = "YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE";
-  let ciphertext_bytes = set2::encryption_oracle(plaintext_key.as_bytes())?;
+  let plaintext_key = "YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE";
+  let (ciphertext_bytes, expected) = set2::encryption_oracle(plaintext_key.as_bytes())?;
+  let actual = set2::detect_cipher_mode(&ciphertext_bytes);
 
-  println!("{:?}", ciphertext_bytes);
+  println!("expected : {:?}", expected);
+  println!("actual   : {:?}", actual);
+
+  assert_eq!(expected, actual);
 
   Ok(())
 }
