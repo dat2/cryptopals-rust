@@ -22,5 +22,13 @@ error_chain! {
       description("invalid pkcs7 padding")
       display("invalid pkcs7 padding for string: {:?}", s)
     }
+    ParseKvError(kv: Vec<u8>) {
+      description("parse key value error")
+      display("failed to parse string: {:?}", kv)
+    }
+    InvalidEmail(email: Vec<u8>) {
+      description("invalid email")
+      display("invalid email: {:?}", email)
+    }
   }
 }

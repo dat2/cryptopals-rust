@@ -69,9 +69,9 @@ fn challenge4() -> errors::Result<()> {
 fn challenge5() -> errors::Result<()> {
   let expected = from_hex_string("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f")?;
 
-  let input_string = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-  let key = "ICE";
-  let actual = encrypt_repeating_key(input_string.as_bytes(), key.as_bytes());
+  let input_string = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+  let key = b"ICE";
+  let actual = encrypt_repeating_key(input_string, key);
 
   println!("expected : {}", to_hex_string(&expected));
   println!("actual   : {}", to_hex_string(&actual));
@@ -95,11 +95,11 @@ fn challenge6() -> errors::Result<()> {
 }
 
 fn challenge7() -> errors::Result<()> {
-  let key = "YELLOW SUBMARINE";
+  let key = b"YELLOW SUBMARINE";
   let mut f = File::open("data/7.txt")?;
   let ciphertext = read_base64_file(&mut f)?;
 
-  let plaintext_bytes = aes_128_ecb_decrypt(key.as_bytes(), &ciphertext)?;
+  let plaintext_bytes = aes_128_ecb_decrypt(key, &ciphertext)?;
   let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
   println!("result: {}", plaintext);
@@ -122,8 +122,8 @@ fn challenge8() -> errors::Result<()> {
 fn challenge9() -> errors::Result<()> {
   let expected = "YELLOW SUBMARINE\u{4}\u{4}\u{4}\u{4}";
 
-  let to_pad = "YELLOW SUBMARINE";
-  let padded_bytes = pad_pkcs7(to_pad.as_bytes(), 20);
+  let to_pad = b"YELLOW SUBMARINE";
+  let padded_bytes = pad_pkcs7(to_pad, 20);
   let actual = unsafe { str::from_utf8_unchecked(&padded_bytes) };
 
   println!("expected : {:?}", expected);
@@ -135,12 +135,12 @@ fn challenge9() -> errors::Result<()> {
 }
 
 fn challenge10() -> errors::Result<()> {
-  let key = "YELLOW SUBMARINE";
+  let key = b"YELLOW SUBMARINE";
   let iv: Vec<_> = vec![0; 16];
   let mut f = File::open("data/10.txt")?;
   let ciphertext = read_base64_file(&mut f)?;
 
-  let plaintext_bytes = set2::aes_128_cbc_decrypt_manual(key.as_bytes(), &iv, &ciphertext)?;
+  let plaintext_bytes = set2::aes_128_cbc_decrypt_manual(key, &iv, &ciphertext)?;
   let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
   println!("result: {}", plaintext);
@@ -149,8 +149,8 @@ fn challenge10() -> errors::Result<()> {
 }
 
 fn challenge11() -> errors::Result<()> {
-  let plaintext_key = "YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE";
-  let (ciphertext_bytes, expected) = set2::encryption_oracle(plaintext_key.as_bytes())?;
+  let plaintext_key = b"YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE";
+  let (ciphertext_bytes, expected) = set2::encryption_oracle(plaintext_key)?;
   let actual = set2::detect_cipher_mode(&ciphertext_bytes);
 
   println!("expected : {:?}", expected);
@@ -171,19 +171,24 @@ fn challenge12() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_SET: usize = 2;
+fn challenge13() -> errors::Result<()> {
 
-fn set_validator(arg: String) -> Result<(), String> {
-  arg.parse::<usize>()
-    .map_err(|e| e.to_string())
-    .and_then(|set| if set <= MAX_SET {
-      Ok(())
-    } else {
-      Err(format!("Set must be in [1..{}]", MAX_SET))
-    })
+  let expected = "admin";
+
+  let profile = set2::create_admin_profile()?;
+  let object = set2::decrypt_profile(&profile)?;
+  let actual_bytes = &object[&b"role".to_vec()];
+  let actual = unsafe { str::from_utf8_unchecked(&actual_bytes) };
+
+  println!("expected : {:?}", expected);
+  println!("actual   : {:?}", actual);
+
+  assert_eq!(expected, actual);
+
+  Ok(())
 }
 
-static MAX_CHALLENGE: usize = 12;
+static MAX_CHALLENGE: usize = 13;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -201,12 +206,6 @@ fn run() -> errors::Result<()> {
     .version("1.0")
     .author("Nicholas Dujay <nickdujay@gmail.com>")
     .about("Runs Matasano's cryptopals challenges")
-    .arg(Arg::with_name("set")
-      .short("s")
-      .long("set")
-      .help("Configures which set to run. If left out, it will run all sets.")
-      .takes_value(true)
-      .validator(set_validator))
     .arg(Arg::with_name("challenge")
       .short("c")
       .long("challenge")
@@ -229,9 +228,9 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(10, challenge10);
   challenges_map.insert(11, challenge11);
   challenges_map.insert(12, challenge12);
+  challenges_map.insert(13, challenge13);
 
   // use arguments to determine what to run
-  // TODO use set :)
   if let Some(challenge_string) = matches.value_of("challenge") {
     let challenge: usize = challenge_string.parse()?;
     let challenge_func = challenges_map[&challenge];

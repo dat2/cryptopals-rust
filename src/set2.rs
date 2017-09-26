@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, BTreeMap, HashMap};
 use std::u8;
 
 use openssl::rand::rand_bytes;
@@ -155,4 +155,70 @@ pub fn decrypt_ecb(oracle: fn(&[u8]) -> Result<Vec<u8>>) -> Result<Vec<u8>> {
   }
 
   Ok(result)
+}
+
+pub fn parse_kv(bytes: &[u8]) -> Result<BTreeMap<Vec<u8>, Vec<u8>>> {
+  let mut result = BTreeMap::new();
+  for kv_pair in bytes.split(|&b| b == b'&') {
+    let pos = kv_pair.iter().position(|&b| b == b'=').ok_or(ErrorKind::ParseKvError(kv_pair.to_vec()))?;
+    let (key, value_eq) = kv_pair.split_at(pos);
+    result.insert(key.to_vec(), value_eq[1..].to_vec());
+  }
+  Ok(result)
+}
+
+pub fn encode_as_query_string(object: BTreeMap<Vec<u8>, Vec<u8>>) -> Vec<u8> {
+  let mut result = Vec::new();
+  for (k, v) in &object {
+    result.extend(k);
+    result.push(b'=');
+    result.extend(v);
+    result.push(b'&');
+  }
+  result.pop();
+  result
+}
+
+lazy_static! {
+  static ref ECB_CUT_AND_PASTE_KEY: Vec<u8> = {
+    let mut key = vec![0; 16];
+    rand_bytes(&mut key).unwrap();
+    key
+  };
+}
+
+pub fn profile_for(email: &[u8]) -> Result<Vec<u8>> {
+  if (email.iter().position(|&b| b == b'=').is_some()) || (email.iter().position(|&b| b == b'&').is_some()) {
+    bail!(ErrorKind::InvalidEmail(email.to_vec()));
+  }
+
+  let mut object = BTreeMap::new();
+  object.insert(b"email".to_vec(), email.to_vec());
+  object.insert(b"uid".to_vec(), b"10".to_vec());
+  object.insert(b"role".to_vec(), b"user".to_vec());
+  let plaintext = encode_as_query_string(object);
+  aes_128_ecb_encrypt(&ECB_CUT_AND_PASTE_KEY, &plaintext)
+}
+
+pub fn create_admin_profile() -> Result<Vec<u8>> {
+  //[email=0000000000][admin<padding>][&role=user&uid=1][0<padding>]
+  let mut admin_input = vec![0; 16 - b"email=".len()];
+  admin_input.extend(b"admin");
+  admin_input.extend(vec![11; 11]);
+  let admin_ciphertext = profile_for(&admin_input)?;
+
+  //[email=0000000000][0000000000&role=][user&uid=10<padding>]
+  let role_input = vec![0; 20];
+  let role_ciphertext = profile_for(&role_input)?;
+
+  //[email=0000000000][0000000000&role=][admin<padding>]
+  let mut result = Vec::new();
+  result.extend(role_ciphertext[..32].to_vec());
+  result.extend(admin_ciphertext[16..32].to_vec());
+  Ok(result)
+}
+
+pub fn decrypt_profile(ciphertext: &[u8]) -> Result<BTreeMap<Vec<u8>, Vec<u8>>> {
+  let plaintext = aes_128_ecb_decrypt(&ECB_CUT_AND_PASTE_KEY, ciphertext)?;
+  parse_kv(&plaintext)
 }
