@@ -161,6 +161,16 @@ fn challenge11() -> errors::Result<()> {
   Ok(())
 }
 
+fn challenge12() -> errors::Result<()> {
+
+  let plaintext_bytes = set2::decrypt_ecb(set2::encryption_ecb_oracle)?;
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+
+  println!("result: {}", plaintext);
+
+  Ok(())
+}
+
 static MAX_SET: usize = 2;
 
 fn set_validator(arg: String) -> Result<(), String> {
@@ -173,7 +183,7 @@ fn set_validator(arg: String) -> Result<(), String> {
     })
 }
 
-static MAX_CHALLENGE: usize = 11;
+static MAX_CHALLENGE: usize = 12;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -218,6 +228,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(9, challenge9);
   challenges_map.insert(10, challenge10);
   challenges_map.insert(11, challenge11);
+  challenges_map.insert(12, challenge12);
 
   // use arguments to determine what to run
   // TODO use set :)
