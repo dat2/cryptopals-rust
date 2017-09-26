@@ -338,3 +338,69 @@ pub fn decrypt_ecb_hard(oracle: fn(&[u8]) -> Result<Vec<u8>>) -> Result<Vec<u8>>
 
   Ok(result)
 }
+
+lazy_static! {
+  static ref CBC_BITFLIPPING_KEY: Vec<u8> = {
+    let mut key = vec![0; 16];
+    rand_bytes(&mut key).unwrap();
+    key
+  };
+  static ref CBC_BITFLIPPING_IV: Vec<u8> = {
+    let mut key = vec![0; 16];
+    rand_bytes(&mut key).unwrap();
+    key
+  };
+}
+
+// challenge 16
+pub fn encrypt_userdata(userdata: &[u8]) -> Result<Vec<u8>> {
+  let prefix = b"comment1=cooking%20MCs;userdata=";
+  let suffix = b";comment2=%20like%20a%20pound%20of%20bacon";
+
+  let removed_semicolons: Vec<_> = userdata.split(|&b| b == b';').collect();
+  let quoted_semicolons = intersperse(&removed_semicolons, b"%3B");
+  let removed_equals: Vec<_> = quoted_semicolons.split(|&b| b == b'=').collect();
+  let quoted_userdata = intersperse(&removed_equals, b"%3D");
+
+  let mut plaintext = Vec::new();
+  plaintext.extend_from_slice(prefix);
+  plaintext.extend(quoted_userdata);
+  plaintext.extend_from_slice(suffix);
+
+  aes_128_cbc_encrypt(&CBC_BITFLIPPING_KEY, &CBC_BITFLIPPING_IV, &plaintext)
+}
+
+pub fn insert_admin_into_userdata(ciphertext: &[u8]) -> Vec<u8> {
+  let mut result = ciphertext.to_vec();
+
+  // the plaintext has    "%3Badmin%3Dtrue"
+  // so, we change it to  "a3;admin=true;e"
+
+  // % => a
+  result[16] ^= 0x44;
+  // B => ;
+  result[18] ^= 0x79;
+  // % => =
+  result[24] ^= 0x18;
+  // 3 => t
+  result[25] ^= 0x47;
+  // D => r
+  result[26] ^= 0x36;
+  // t => u
+  result[27] ^= 0x01;
+  // r => e
+  result[28] ^= 0x17;
+  // u => ;
+  result[29] ^= 0x04E;
+
+  result
+}
+
+pub fn inserted_admin_into_userdata(ciphertext: &[u8]) -> Result<bool> {
+  let plaintext = aes_128_cbc_decrypt(&CBC_BITFLIPPING_KEY, &CBC_BITFLIPPING_IV, ciphertext)?;
+  let result = plaintext
+    .split(|&b| b == b';')
+    .find(|chunk| chunk == b"admin=true")
+    .is_some();
+  Ok(result)
+}

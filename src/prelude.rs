@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::io::prelude::*;
-use std::iter;
+use std::iter::{self, Iterator};
 use std::str;
 
 use openssl::symm::{Cipher, decrypt, encrypt};
@@ -210,6 +210,17 @@ pub fn unpad_pkcs7(data: &[u8]) -> Result<Vec<u8>> {
   } else {
     Err(ErrorKind::InvalidPkcs7Padding(data.to_vec()).into())
   }
+}
+
+pub fn intersperse(data: &[&[u8]], between: &[u8]) -> Vec<u8> {
+  let mut result = Vec::new();
+  for (i, chunk) in data.iter().enumerate() {
+    result.extend_from_slice(chunk);
+    if i + 1 < data.len() {
+      result.extend_from_slice(between);
+    }
+  }
+  result
 }
 
 #[cfg(test)]
