@@ -178,7 +178,7 @@ fn challenge13() -> errors::Result<()> {
   let profile = set2::create_admin_profile()?;
   let object = set2::decrypt_profile(&profile)?;
   let actual_bytes = &object[&b"role".to_vec()];
-  let actual = unsafe { str::from_utf8_unchecked(&actual_bytes) };
+  let actual = unsafe { str::from_utf8_unchecked(actual_bytes) };
 
   println!("expected : {:?}", expected);
   println!("actual   : {:?}", actual);
@@ -188,7 +188,37 @@ fn challenge13() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 13;
+fn challenge14() -> errors::Result<()> {
+
+  let plaintext_bytes = set2::decrypt_ecb_hard(set2::encryption_ecb_oracle_hard)?;
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+
+  println!("result: {}", plaintext);
+
+  Ok(())
+}
+
+fn challenge15() -> errors::Result<()> {
+
+  let ice_ice_baby_four = "ICE ICE BABY\u{4}\u{4}\u{4}\u{4}";
+  let is_ice_ice_baby_four_padded = unpad_pkcs7(ice_ice_baby_four.as_bytes()).is_ok();
+  println!("{:?} is pkcs7 padded: {}", ice_ice_baby_four, is_ice_ice_baby_four_padded);
+  assert!(is_ice_ice_baby_four_padded);
+
+  let ice_ice_baby_five = "ICE ICE BABY\u{5}\u{5}\u{5}\u{5}";
+  let is_ice_ice_baby_five_padded = unpad_pkcs7(ice_ice_baby_five.as_bytes()).is_ok();
+  println!("{:?} is pkcs7 padded: {}", ice_ice_baby_five, is_ice_ice_baby_five_padded);
+  assert!(!is_ice_ice_baby_five_padded);
+
+  let ice_ice_baby_1234 = "ICE ICE BABY\u{1}\u{2}\u{3}\u{4}";
+  let is_ice_ice_baby_1234_padded = unpad_pkcs7(ice_ice_baby_1234.as_bytes()).is_ok();
+  println!("{:?} is pkcs7 padded: {}", ice_ice_baby_1234, is_ice_ice_baby_1234_padded);
+  assert!(!is_ice_ice_baby_1234_padded);
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 15;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -229,6 +259,8 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(11, challenge11);
   challenges_map.insert(12, challenge12);
   challenges_map.insert(13, challenge13);
+  challenges_map.insert(14, challenge14);
+  challenges_map.insert(15, challenge15);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
