@@ -285,7 +285,7 @@ pub fn decrypt_ecb_hard(oracle: fn(&[u8]) -> Result<Vec<u8>>) -> Result<Vec<u8>>
   // step 2: figure out how much to pad the prefix by
   let prefix_padding = (1..block_size)
     .map(|i| (i, oracle(&vec![0; i + block_size * 2]).unwrap()))
-    .find(|&(_,ref ciphertext)| is_aes_ecb(&ciphertext))
+    .find(|&(_, ref ciphertext)| is_aes_ecb(&ciphertext))
     .unwrap()
     .0;
 

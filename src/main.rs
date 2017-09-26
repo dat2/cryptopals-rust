@@ -202,17 +202,23 @@ fn challenge15() -> errors::Result<()> {
 
   let ice_ice_baby_four = "ICE ICE BABY\u{4}\u{4}\u{4}\u{4}";
   let is_ice_ice_baby_four_padded = unpad_pkcs7(ice_ice_baby_four.as_bytes()).is_ok();
-  println!("{:?} is pkcs7 padded: {}", ice_ice_baby_four, is_ice_ice_baby_four_padded);
+  println!("{:?} is pkcs7 padded: {}",
+           ice_ice_baby_four,
+           is_ice_ice_baby_four_padded);
   assert!(is_ice_ice_baby_four_padded);
 
   let ice_ice_baby_five = "ICE ICE BABY\u{5}\u{5}\u{5}\u{5}";
   let is_ice_ice_baby_five_padded = unpad_pkcs7(ice_ice_baby_five.as_bytes()).is_ok();
-  println!("{:?} is pkcs7 padded: {}", ice_ice_baby_five, is_ice_ice_baby_five_padded);
+  println!("{:?} is pkcs7 padded: {}",
+           ice_ice_baby_five,
+           is_ice_ice_baby_five_padded);
   assert!(!is_ice_ice_baby_five_padded);
 
   let ice_ice_baby_1234 = "ICE ICE BABY\u{1}\u{2}\u{3}\u{4}";
   let is_ice_ice_baby_1234_padded = unpad_pkcs7(ice_ice_baby_1234.as_bytes()).is_ok();
-  println!("{:?} is pkcs7 padded: {}", ice_ice_baby_1234, is_ice_ice_baby_1234_padded);
+  println!("{:?} is pkcs7 padded: {}",
+           ice_ice_baby_1234,
+           is_ice_ice_baby_1234_padded);
   assert!(!is_ice_ice_baby_1234_padded);
 
   Ok(())
