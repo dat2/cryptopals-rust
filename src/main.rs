@@ -14,6 +14,7 @@ use cryptopals::prelude::*;
 use cryptopals::errors;
 use cryptopals::set1;
 use cryptopals::set2;
+use cryptopals::set3;
 
 fn challenge1() -> errors::Result<()> {
 
@@ -235,7 +236,13 @@ fn challenge16() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 16;
+fn challenge17() -> errors::Result<()> {
+  let encrypted = set3::random_encrypted_string()?;
+  println!("{:?}", encrypted);
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 17;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -279,6 +286,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(14, challenge14);
   challenges_map.insert(15, challenge15);
   challenges_map.insert(16, challenge16);
+  challenges_map.insert(17, challenge17);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
