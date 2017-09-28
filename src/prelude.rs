@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::io::prelude::*;
-use std::iter::{self, Iterator};
+use std::iter::Iterator;
 use std::str;
 
-use openssl::symm::{Cipher, decrypt, encrypt};
+use openssl::symm::{Cipher, Crypter, Mode, decrypt, encrypt};
 
 use errors::*;
 
@@ -118,8 +118,12 @@ pub fn from_base64_string(base64_str: &str) -> Result<Vec<u8>> {
     let fourth_index = from_base64_byte(chunk[3])?;
 
     result.push((first_index << 2) | (second_index >> 4));
-    result.push(((second_index & 0x0F) << 4) | (third_index >> 2));
-    result.push(((third_index & 0x03) << 6) | fourth_index);
+    if chunk[2] != b'=' {
+      result.push(((second_index & 0x0F) << 4) | (third_index >> 2));
+    }
+    if chunk[3] != b'=' {
+      result.push(((third_index & 0x03) << 6) | fourth_index);
+    }
   }
 
   Ok(result)
@@ -191,21 +195,46 @@ pub fn aes_128_cbc_decrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>
   decrypt(Cipher::aes_128_cbc(), key, Some(iv), data).map_err(|e| e.into())
 }
 
+pub fn aes_128_cbc_encrypt_no_padding(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+  cipher_no_padding(Cipher::aes_128_cbc(), Mode::Encrypt, key, Some(iv), data).map_err(|e| e.into())
+}
+
+pub fn aes_128_cbc_decrypt_no_padding(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+  cipher_no_padding(Cipher::aes_128_cbc(), Mode::Decrypt, key, Some(iv), data).map_err(|e| e.into())
+}
+
+fn cipher_no_padding(t: Cipher,
+                     mode: Mode,
+                     key: &[u8],
+                     iv: Option<&[u8]>,
+                     data: &[u8])
+                     -> Result<Vec<u8>> {
+  let mut c = Crypter::new(t, mode, key, iv)?;
+  c.pad(false);
+  let mut out = vec![0; data.len() + t.block_size()];
+  let count = c.update(data, &mut out)?;
+  let rest = c.finalize(&mut out[count..])?;
+  out.truncate(count + rest);
+  Ok(out)
+}
+
 pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {
-  let padding = block_len - data.len() as u8;
-  let mut result = Vec::new();
-  result.extend(data);
-  result.extend(iter::repeat(padding).take(padding as usize));
-  result
+  if data.len() % block_len as usize == 0 {
+    data.to_vec()
+  } else {
+    let padding = block_len - (data.len() as u8) % block_len;
+    let mut result = Vec::new();
+    result.extend(data);
+    result.extend(vec![padding; padding as usize]);
+    result
+  }
 }
 
 pub fn unpad_pkcs7(data: &[u8]) -> Result<Vec<u8>> {
   let padding = data[data.len() - 1];
-  let padding_bytes: Vec<_> = iter::repeat(padding).take(padding as usize).collect();
-
-  if data[(data.len() - padding as usize)..] == padding_bytes[..] {
+  if padding as usize <= data.len() && data[(data.len() - padding as usize)..].to_vec() == vec![padding; padding as usize] {
     let mut result = Vec::new();
-    result.extend(data.iter().take(data.len() - padding as usize));
+    result.extend_from_slice(&data[..(data.len() - padding as usize)]);
     Ok(result)
   } else {
     Err(ErrorKind::InvalidPkcs7Padding(data.to_vec()).into())
@@ -238,6 +267,24 @@ mod tests {
   }
 
   #[test]
+  fn test_pad_pkcs7() {
+    let expected = "YELLOW SUBMARIN\u{1}";
+
+    let input = b"YELLOW SUBMARIN";
+    let actual = pad_pkcs7(input, 16);
+    assert_eq!(expected.as_bytes().to_vec(), actual);
+  }
+
+  #[test]
+  fn test_pad_pkcs7_at_boundary() {
+    let expected = "YELLOW SUBMARINE";
+
+    let input = b"YELLOW SUBMARINE";
+    let actual = pad_pkcs7(input, 16);
+    assert_eq!(expected.as_bytes().to_vec(), actual);
+  }
+
+  #[test]
   fn test_unpad_pkcs7_unpads() {
     let expected = "YELLOW SUBMARINE";
 
@@ -250,6 +297,12 @@ mod tests {
   #[test]
   fn test_unpad_pkcs7_complains_when_wrong() {
     let padded = "YELLOW SUBMARINE\u{1}\u{2}\u{3}\u{4}";
+    assert!(unpad_pkcs7(padded.as_bytes()).is_err());
+  }
+
+  #[test]
+  fn test_unpad_pkcs7_complains_when_byte_huge() {
+    let padded = "YELLOW SUBMARINE\u{1}\u{2}\u{3}\u{89}";
     assert!(unpad_pkcs7(padded.as_bytes()).is_err());
   }
 }

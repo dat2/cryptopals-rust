@@ -398,8 +398,7 @@ pub fn insert_admin_into_userdata(ciphertext: &[u8]) -> Vec<u8> {
 
 pub fn inserted_admin_into_userdata(ciphertext: &[u8]) -> Result<bool> {
   let plaintext = aes_128_cbc_decrypt(&CBC_BITFLIPPING_KEY, &CBC_BITFLIPPING_IV, ciphertext)?;
-  let result = plaintext
-    .split(|&b| b == b';')
+  let result = plaintext.split(|&b| b == b';')
     .find(|chunk| chunk == b"admin=true")
     .is_some();
   Ok(result)
