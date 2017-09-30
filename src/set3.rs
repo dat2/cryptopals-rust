@@ -20,21 +20,16 @@ lazy_static! {
   };
   static ref CBC_PADDING_STRINGS: Vec<Vec<u8>> = {
     let mut result = Vec::new();
-    // result.push(from_base64_string("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=").unwrap());
-    // result.push(from_base64_string("MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=").unwrap());
-    // result.push(from_base64_string("MDAwMDAyUXVpY2sgdG8gdGhlIHBvaW50LCB0byB0aGUgcG9pbnQsIG5vIGZha2luZw==").unwrap());
-    // result.push(from_base64_string("MDAwMDAzQ29va2luZyBNQydzIGxpa2UgYSBwb3VuZCBvZiBiYWNvbg==").unwrap());
-    // result.push(from_base64_string("MDAwMDA0QnVybmluZyAnZW0sIGlmIHlvdSBhaW4ndCBxdWljayBhbmQgbmltYmxl").unwrap());
-    // result.push(from_base64_string("MDAwMDA1SSBnbyBjcmF6eSB3aGVuIEkgaGVhciBhIGN5bWJhbA==").unwrap());
-    // result.push(from_base64_string("MDAwMDA2QW5kIGEgaGlnaCBoYXQgd2l0aCBhIHNvdXBlZCB1cCB0ZW1wbw==").unwrap());
-    // result.push(from_base64_string("MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8=").unwrap());
-    // result.push(from_base64_string("MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=").unwrap());
-    // result.push(from_base64_string("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93").unwrap());
-    for i in 1..16 {
-      let mut plaintext = vec![0; 16];
-      plaintext.extend(vec![0; 16 - i % 16]);
-      result.push(plaintext);
-    }
+    result.push(from_base64_string("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=").unwrap());
+    result.push(from_base64_string("MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=").unwrap());
+    result.push(from_base64_string("MDAwMDAyUXVpY2sgdG8gdGhlIHBvaW50LCB0byB0aGUgcG9pbnQsIG5vIGZha2luZw==").unwrap());
+    result.push(from_base64_string("MDAwMDAzQ29va2luZyBNQydzIGxpa2UgYSBwb3VuZCBvZiBiYWNvbg==").unwrap());
+    result.push(from_base64_string("MDAwMDA0QnVybmluZyAnZW0sIGlmIHlvdSBhaW4ndCBxdWljayBhbmQgbmltYmxl").unwrap());
+    result.push(from_base64_string("MDAwMDA1SSBnbyBjcmF6eSB3aGVuIEkgaGVhciBhIGN5bWJhbA==").unwrap());
+    result.push(from_base64_string("MDAwMDA2QW5kIGEgaGlnaCBoYXQgd2l0aCBhIHNvdXBlZCB1cCB0ZW1wbw==").unwrap());
+    result.push(from_base64_string("MDAwMDA3SSdtIG9uIGEgcm9sbCwgaXQncyB0aW1lIHRvIGdvIHNvbG8=").unwrap());
+    result.push(from_base64_string("MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g=").unwrap());
+    result.push(from_base64_string("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93").unwrap());
     result
   };
 }
@@ -61,8 +56,10 @@ pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
 
   let mut result = VecDeque::new();
 
+  // there are a few false positives, so we need to filter them out
+  // rev protects against 0x03 being tripped up by 0x02
   let mut last_byte_candidates = Vec::new();
-  for z in 2..u8::MAX {
+  for z in (2..u8::MAX).rev() {
     let mut copied_ciphertext = ciphertext.to_vec();
     copied_ciphertext[ciphertext.len() - 16 - 1] ^= z ^ 0x01;
     if padding_oracle(&copied_ciphertext) {
@@ -77,27 +74,46 @@ pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
   } else {
 
     let mut padding = 0;
-    for &last_byte in &last_byte_candidates {
-      if last_byte > 3 && last_byte <= 16 {
+    for &candidate in &last_byte_candidates {
+      // if its padding between 4 and 16, we can easily detect it
+      if candidate > 2 && candidate <= 16 {
         let mut copied_ciphertext = ciphertext.to_vec();
-        copied_ciphertext[ciphertext.len() - 16 - 2] ^= last_byte ^ 0x02;
-        copied_ciphertext[ciphertext.len() - 16 - 1] ^= last_byte ^ 0x02;
+        copied_ciphertext[ciphertext.len() - 16 - 2] ^= candidate ^ 0x02;
+        copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
         if padding_oracle(&copied_ciphertext) {
-          padding = last_byte;
+          padding = candidate;
           break;
         }
-      } else if last_byte <= 3 {
-        // test if its 3 first, then test if its 2
+      } else if candidate == 2 {
+        // however, if its 0x02 0x02, we just need to verify it
+        let mut copied_ciphertext = ciphertext.to_vec();
+        copied_ciphertext[ciphertext.len() - 16 - 2] ^= 0x02;
+        copied_ciphertext[ciphertext.len() - 16 - 1] ^= 0x02;
+        if padding_oracle(&copied_ciphertext) {
+          padding = candidate;
+          break;
+        }
       } else {
+        // if its not padding, we need to filter out the right byte
+        for z in 16..u8::MAX {
+          let mut copied_ciphertext = ciphertext.to_vec();
+          copied_ciphertext[ciphertext.len() - 16 - 2] ^= z ^ 0x02;
+          copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
+          if padding_oracle(&copied_ciphertext) {
+            result.push_back(z);
+            result.push_back(candidate);
+            break;
+          }
+        }
       }
     }
 
+    // if we detected that its padded, then pad it for us
     if padding != 0 {
       result.extend(vec![padding; padding as usize]);
     }
 
   }
-
 
   // for i in 2..17 {
   //   for guessed_value in 2..u8::MAX {
