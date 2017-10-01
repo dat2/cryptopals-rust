@@ -1,7 +1,6 @@
 use std::collections::{BTreeSet, BTreeMap, HashMap};
 use std::u8;
 
-use openssl::rand::rand_bytes;
 use openssl::symm::{Cipher, Crypter, Mode};
 use rand::{self, Rng};
 use rand::distributions::{IndependentSample, Range};
@@ -34,11 +33,7 @@ pub fn aes_128_cbc_decrypt_manual(key: &[u8], iv: &[u8], data: &[u8]) -> Result<
 }
 
 lazy_static! {
-  static ref ORACLE_KEY: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
+  static ref ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
 }
 
 // challenge 11
@@ -50,12 +45,10 @@ pub enum CipherMode {
 
 pub fn encryption_oracle(data: &[u8]) -> Result<(Vec<u8>, CipherMode)> {
 
-  let mut rng = rand::thread_rng();
-
   // generate random prefix
+  let mut rng = rand::thread_rng();
   let count = Range::new(5, 10);
-  let mut prefix_bytes = vec![0; count.ind_sample(&mut rng)];
-  rand_bytes(&mut prefix_bytes)?;
+  let prefix_bytes = random_bytes(count.ind_sample(&mut rng))?;
 
   // prefix to the plaintext
   let mut plaintext = Vec::new();
@@ -67,8 +60,7 @@ pub fn encryption_oracle(data: &[u8]) -> Result<(Vec<u8>, CipherMode)> {
     Ok((ciphertext, CipherMode::ECB))
   } else {
     // random iv
-    let mut iv = vec![0; 16];
-    rand_bytes(&mut iv)?;
+    let iv = random_bytes(16)?;
 
     let ciphertext = aes_128_cbc_encrypt(&ORACLE_KEY, &iv, &plaintext)?;
     Ok((ciphertext, CipherMode::CBC))
@@ -97,11 +89,7 @@ pub fn detect_cipher_mode(ciphertext: &[u8]) -> CipherMode {
 
 // challenge 12
 lazy_static! {
-  static ref ECB_ORACLE_KEY: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
+  static ref ECB_ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
   static ref ECB_ORACLE_SUFFIX: Vec<u8> = {
     from_base64_string(
       "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIG\
@@ -197,11 +185,7 @@ pub fn encode_as_query_string(object: &BTreeMap<Vec<u8>, Vec<u8>>) -> Vec<u8> {
 }
 
 lazy_static! {
-  static ref ECB_CUT_AND_PASTE_KEY: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
+  static ref ECB_CUT_AND_PASTE_KEY: Vec<u8> = random_bytes(16).unwrap();
 }
 
 pub fn profile_for(email: &[u8]) -> Result<Vec<u8>> {
@@ -242,17 +226,11 @@ pub fn decrypt_profile(ciphertext: &[u8]) -> Result<BTreeMap<Vec<u8>, Vec<u8>>> 
 
 // challenge 14
 lazy_static! {
-  static ref ECB_HARD_ORACLE_KEY: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
+  static ref ECB_HARD_ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
   static ref ECB_HARD_ORACLE_PREFIX: Vec<u8> = {
     let mut rng = rand::thread_rng();
     let count = Range::new(0, 100);
-    let mut prefix = vec![0; count.ind_sample(&mut rng)];
-    rand_bytes(&mut prefix).unwrap();
-    prefix
+    random_bytes(count.ind_sample(&mut rng)).unwrap()
   };
   static ref ECB_HARD_ORACLE_SUFFIX: Vec<u8> = {
     from_base64_string(
@@ -340,16 +318,8 @@ pub fn decrypt_ecb_hard(oracle: fn(&[u8]) -> Result<Vec<u8>>) -> Result<Vec<u8>>
 }
 
 lazy_static! {
-  static ref CBC_BITFLIPPING_KEY: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
-  static ref CBC_BITFLIPPING_IV: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
+  static ref CBC_BITFLIPPING_KEY: Vec<u8> = random_bytes(16).unwrap();
+  static ref CBC_BITFLIPPING_IV: Vec<u8> = random_bytes(16).unwrap();
 }
 
 // challenge 16

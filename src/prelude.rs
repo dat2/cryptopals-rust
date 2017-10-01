@@ -4,9 +4,16 @@ use std::io::prelude::*;
 use std::iter::Iterator;
 use std::str;
 
+use openssl::rand::rand_bytes;
 use openssl::symm::{Cipher, Crypter, Mode, decrypt, encrypt};
 
 use errors::*;
+
+pub fn random_bytes(num: usize) -> Result<Vec<u8>> {
+  let mut buffer = vec![0; num];
+  rand_bytes(&mut buffer)?;
+  Ok(buffer)
+}
 
 fn hex_byte_to_nybble(c: u8) -> Result<u8> {
   if c >= b'A' && c <= b'F' {
@@ -220,11 +227,12 @@ fn cipher_no_padding(t: Cipher,
 
 pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {
   if data.len() % block_len as usize == 0 {
-    data.to_vec()
+    let mut result = data.to_vec();
+    result.extend(vec![16; 16]);
+    result
   } else {
     let padding = block_len - (data.len() as u8) % block_len;
-    let mut result = Vec::new();
-    result.extend(data);
+    let mut result = data.to_vec();
     result.extend(vec![padding; padding as usize]);
     result
   }
@@ -232,7 +240,7 @@ pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {
 
 pub fn is_pkcs7_padded(data: &[u8]) -> bool {
   let padding = data[data.len() - 1];
-  padding as usize <= data.len() &&
+  padding > 0 && padding as usize <= data.len() &&
   data[(data.len() - padding as usize)..].to_vec() == vec![padding; padding as usize]
 }
 
@@ -283,7 +291,7 @@ mod tests {
 
   #[test]
   fn test_pad_pkcs7_at_boundary() {
-    let expected = "YELLOW SUBMARINE";
+    let expected = "YELLOW SUBMARINE\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}\u{10}";
 
     let input = b"YELLOW SUBMARINE";
     let actual = pad_pkcs7(input, 16);
@@ -310,5 +318,11 @@ mod tests {
   fn test_unpad_pkcs7_complains_when_byte_huge() {
     let padded = "YELLOW SUBMARINE\u{1}\u{2}\u{3}\u{89}";
     assert!(unpad_pkcs7(padded.as_bytes()).is_err());
+  }
+
+  #[test]
+  fn test_zero_is_not_pkcs7_padded() {
+    let padded = "YELLOW SUBMARIN\u{0}";
+    assert!(!is_pkcs7_padded(padded.as_bytes()));
   }
 }

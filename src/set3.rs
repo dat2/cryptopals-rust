@@ -1,23 +1,14 @@
 use std::collections::VecDeque;
 use std::u8;
 
-use openssl::rand::rand_bytes;
 use rand::{self, Rng};
 
 use errors::*;
 use prelude::*;
 
 lazy_static! {
-  static ref CBC_PADDING_ORACLE_KEY: Vec<u8> = {
-    let mut key = vec![0; 16];
-    rand_bytes(&mut key).unwrap();
-    key
-  };
-  static ref CBC_PADDING_ORACLE_IV: Vec<u8> = {
-    let mut iv = vec![0; 16];
-    rand_bytes(&mut iv).unwrap();
-    iv
-  };
+  static ref CBC_PADDING_ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
+  static ref CBC_PADDING_ORACLE_IV: Vec<u8> = random_bytes(16).unwrap();
   static ref CBC_PADDING_STRINGS: Vec<Vec<u8>> = {
     let mut result = Vec::new();
     result.push(from_base64_string("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=").unwrap());
@@ -38,7 +29,7 @@ pub fn random_ciphertext() -> Result<Vec<u8>> {
   let mut rng = rand::thread_rng();
   let plaintext = rng.choose(&CBC_PADDING_STRINGS).unwrap();
   let padded_plaintext = pad_pkcs7(plaintext, 16);
-  println!("plaintext_bytes: {:?}", padded_plaintext);
+  println!("input bytes     : {:?}", padded_plaintext);
   aes_128_cbc_encrypt_no_padding(&CBC_PADDING_ORACLE_KEY,
                                  &CBC_PADDING_ORACLE_IV,
                                  &padded_plaintext)
@@ -50,96 +41,106 @@ pub fn padding_oracle(ciphertext: &[u8]) -> bool {
     .unwrap_or(false)
 }
 
-pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
+pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Result<Vec<u8>> {
 
-  // preconditions: ciphertext length > 16
+  // decrypt(c) = i  = c-1  ^ p
+  // decrypt(c) = i' = c-1' ^ p
+  // i == i', since c == c
+  // so p = c-1 ^ i
 
-  let mut result = VecDeque::new();
+  // the
 
-  // there are a few false positives, so we need to filter them out
-  // rev protects against 0x03 being tripped up by 0x02
-  let mut last_byte_candidates = Vec::new();
-  for z in (2..u8::MAX).rev() {
-    let mut copied_ciphertext = ciphertext.to_vec();
-    copied_ciphertext[ciphertext.len() - 16 - 1] ^= z ^ 0x01;
-    if padding_oracle(&copied_ciphertext) {
-      last_byte_candidates.push(z);
+  let result = VecDeque::new();
+
+  for z in 0..u8::MAX {
+    let mut oracle_blocks = vec![0; 15];
+    oracle_blocks.push(z);
+    oracle_blocks.extend(ciphertext[ciphertext.len() - 16 ..].to_vec());
+    if padding_oracle(&oracle_blocks) {
+      let i = z ^ 0x01;
+      println!("c': {} i: {} c: {} p: {}",
+        z, i, ciphertext[15], ciphertext[15] ^ i);
     }
   }
 
   // there's only 1/256 chance (of random texts) where the last byte is actually
   // 0x01, all other bytes will have a few candidates
-  if last_byte_candidates.is_empty() {
-    result.push_back(0x01);
-  } else {
+  // if last_byte_candidates.is_empty() {
+  //   result.push_back(0x01);
+  // } else {
 
-    let mut padding = 0;
-    for &candidate in &last_byte_candidates {
-      // if its padding between 4 and 16, we can easily detect it
-      if candidate > 2 && candidate <= 16 {
-        let mut copied_ciphertext = ciphertext.to_vec();
-        copied_ciphertext[ciphertext.len() - 16 - 2] ^= candidate ^ 0x02;
-        copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
-        if padding_oracle(&copied_ciphertext) {
-          padding = candidate;
-          break;
-        }
-      } else if candidate == 2 {
-        // however, if its 0x02 0x02, we just need to verify it
-        let mut copied_ciphertext = ciphertext.to_vec();
-        copied_ciphertext[ciphertext.len() - 16 - 2] ^= 0x02;
-        copied_ciphertext[ciphertext.len() - 16 - 1] ^= 0x02;
-        if padding_oracle(&copied_ciphertext) {
-          padding = candidate;
-          break;
-        }
-      } else {
-        // if its not padding, we need to filter out the right byte
-        for z in 16..u8::MAX {
-          let mut copied_ciphertext = ciphertext.to_vec();
-          copied_ciphertext[ciphertext.len() - 16 - 2] ^= z ^ 0x02;
-          copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
-          if padding_oracle(&copied_ciphertext) {
-            result.push_front(candidate);
-            result.push_front(z);
-            break;
-          }
-        }
-      }
-    }
+  //   let mut padding = 0;
+  //   for &candidate in &last_byte_candidates {
+  //     // if its padding between 4 and 16, we can easily detect it
+  //     if candidate > 2 && candidate <= 16 {
+  //       let mut copied_ciphertext = ciphertext.to_vec();
+  //       copied_ciphertext[ciphertext.len() - 16 - 2] ^= candidate ^ 0x02;
+  //       copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
+  //       if padding_oracle(&copied_ciphertext) {
+  //         padding = candidate;
+  //         break;
+  //       }
+  //     } else if candidate == 2 {
+  //       // however, if its 0x02 0x02, we just need to verify it
+  //       let mut copied_ciphertext = ciphertext.to_vec();
+  //       copied_ciphertext[ciphertext.len() - 16 - 2] ^= 0x02;
+  //       copied_ciphertext[ciphertext.len() - 16 - 1] ^= 0x02;
+  //       if padding_oracle(&copied_ciphertext) {
+  //         padding = candidate;
+  //         break;
+  //       }
+  //     } else {
+  //       // if its not padding, we need to filter out the right byte
+  //       for z in 16..u8::MAX {
+  //         let mut copied_ciphertext = ciphertext.to_vec();
+  //         copied_ciphertext[ciphertext.len() - 16 - 2] ^= z ^ 0x02;
+  //         copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
+  //         if padding_oracle(&copied_ciphertext) {
+  //           result.push_front(candidate);
+  //           result.push_front(z);
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   }
 
-    // if we detected that its padded, then pad it for us
-    if padding != 0 {
-      result.extend(vec![padding; padding as usize]);
-    }
+  //   // if we detected that its padded, then pad it for us
+  //   if padding != 0 {
+  //     result.extend(vec![padding; padding as usize]);
+  //   }
 
-  }
+  // }
 
-  for i in (result.len() + 1)..(ciphertext.len() - 16) {
+  // // this only works for the last block
+  // for i in (result.len() + 1)..(ciphertext.len() - 16 + 1) {
 
-    let mask_prefix = vec![0; ciphertext.len() - 16 - i];
+  //   let mask_prefix = vec![0; ciphertext.len() - 16 - i];
 
-    for guessed_value in 1..u8::MAX {
-      let mut mask = mask_prefix.clone();
-      mask.push(guessed_value ^ i as u8);
-      for r in &result {
-        mask.push(r ^ i as u8);
-      }
-      mask.extend(vec![0; 16]);
+  //   for guessed_value in 1..u8::MAX {
+  //     let mut mask = mask_prefix.clone();
+  //     mask.push(guessed_value ^ i as u8);
+  //     for r in &result {
+  //       mask.push(r ^ i as u8);
+  //     }
+  //     mask.extend(vec![0; 16]);
 
-      let xored_ciphertext = fixed_xor(ciphertext, &mask);
-      if padding_oracle(&xored_ciphertext) {
-        result.push_front(guessed_value);
-        break;
-      }
-    }
+  //     // [0_prefix][result][0_suffix]
 
-  }
+  //     let xored_ciphertext = fixed_xor(ciphertext, &mask);
+  //     if padding_oracle(&xored_ciphertext) {
+  //       result.push_front(guessed_value);
+  //       break;
+  //     }
+  //   }
 
-  let vec = Vec::from(result);
-  if is_pkcs7_padded(&vec) {
-    unpad_pkcs7(&vec).unwrap()
-  } else {
-    vec
-  }
+  // }
+
+  // let vec = Vec::from(result);
+  // if is_pkcs7_padded(&vec) {
+  //   unpad_pkcs7(&vec).unwrap()
+  // } else {
+  //   vec
+  // }
+
+  Ok(Vec::from(result))
 }
