@@ -285,7 +285,7 @@ pub fn decrypt_ecb_hard(oracle: fn(&[u8]) -> Result<Vec<u8>>) -> Result<Vec<u8>>
   // step 2: figure out how much to pad the prefix by
   let prefix_padding = (1..block_size)
     .map(|i| (i, oracle(&vec![0; i + block_size * 2]).unwrap()))
-    .find(|&(_, ref ciphertext)| is_aes_ecb(&ciphertext))
+    .find(|&(_, ref ciphertext)| is_aes_ecb(ciphertext))
     .unwrap()
     .0;
 
@@ -398,8 +398,5 @@ pub fn insert_admin_into_userdata(ciphertext: &[u8]) -> Vec<u8> {
 
 pub fn inserted_admin_into_userdata(ciphertext: &[u8]) -> Result<bool> {
   let plaintext = aes_128_cbc_decrypt(&CBC_BITFLIPPING_KEY, &CBC_BITFLIPPING_IV, ciphertext)?;
-  let result = plaintext.split(|&b| b == b';')
-    .find(|chunk| chunk == b"admin=true")
-    .is_some();
-  Ok(result)
+  Ok(plaintext.split(|&b| b == b';').any(|chunk| chunk == b"admin=true"))
 }

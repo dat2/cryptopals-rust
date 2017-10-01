@@ -230,9 +230,15 @@ pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {
   }
 }
 
+pub fn is_pkcs7_padded(data: &[u8]) -> bool {
+  let padding = data[data.len() - 1];
+  padding as usize <= data.len() &&
+  data[(data.len() - padding as usize)..].to_vec() == vec![padding; padding as usize]
+}
+
 pub fn unpad_pkcs7(data: &[u8]) -> Result<Vec<u8>> {
   let padding = data[data.len() - 1];
-  if padding as usize <= data.len() && data[(data.len() - padding as usize)..].to_vec() == vec![padding; padding as usize] {
+  if is_pkcs7_padded(data) {
     let mut result = Vec::new();
     result.extend_from_slice(&data[..(data.len() - padding as usize)]);
     Ok(result)

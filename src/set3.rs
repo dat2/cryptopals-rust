@@ -37,7 +37,7 @@ lazy_static! {
 pub fn random_ciphertext() -> Result<Vec<u8>> {
   let mut rng = rand::thread_rng();
   let plaintext = rng.choose(&CBC_PADDING_STRINGS).unwrap();
-  let padded_plaintext = pad_pkcs7(&plaintext, 16);
+  let padded_plaintext = pad_pkcs7(plaintext, 16);
   println!("plaintext_bytes: {:?}", padded_plaintext);
   aes_128_cbc_encrypt_no_padding(&CBC_PADDING_ORACLE_KEY,
                                  &CBC_PADDING_ORACLE_IV,
@@ -46,8 +46,8 @@ pub fn random_ciphertext() -> Result<Vec<u8>> {
 
 pub fn padding_oracle(ciphertext: &[u8]) -> bool {
   aes_128_cbc_decrypt_no_padding(&CBC_PADDING_ORACLE_KEY, &CBC_PADDING_ORACLE_IV, ciphertext)
-    .and_then(|plaintext| unpad_pkcs7(&plaintext))
-    .is_ok()
+    .map(|plaintext| is_pkcs7_padded(&plaintext))
+    .unwrap_or(false)
 }
 
 pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
@@ -100,8 +100,8 @@ pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
           copied_ciphertext[ciphertext.len() - 16 - 2] ^= z ^ 0x02;
           copied_ciphertext[ciphertext.len() - 16 - 1] ^= candidate ^ 0x02;
           if padding_oracle(&copied_ciphertext) {
-            result.push_back(z);
-            result.push_back(candidate);
+            result.push_front(candidate);
+            result.push_front(z);
             break;
           }
         }
@@ -115,23 +115,31 @@ pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
 
   }
 
-  // for i in 2..17 {
-  //   for guessed_value in 2..u8::MAX {
-  //     let mut mask = vec![0; ciphertext.len() - 16 - i];
-  //     mask.push(guessed_value ^ i as u8);
-  //     for r in &result {
-  //       mask.push(r ^ i as u8);
-  //     }
-  //     let rest_length = ciphertext.len() - mask.len();
-  //     mask.extend(vec![0; rest_length]);
+  for i in (result.len() + 1)..(ciphertext.len() - 16) {
 
-  //     let masked = fixed_xor(ciphertext, &mask);
-  //     if padding_oracle(&masked) {
-  //       result.push_front(guessed_value);
-  //       break;
-  //     }
-  //   }
-  // }
+    let mask_prefix = vec![0; ciphertext.len() - 16 - i];
 
-  Vec::from(result)
+    for guessed_value in 1..u8::MAX {
+      let mut mask = mask_prefix.clone();
+      mask.push(guessed_value ^ i as u8);
+      for r in &result {
+        mask.push(r ^ i as u8);
+      }
+      mask.extend(vec![0; 16]);
+
+      let xored_ciphertext = fixed_xor(ciphertext, &mask);
+      if padding_oracle(&xored_ciphertext) {
+        result.push_front(guessed_value);
+        break;
+      }
+    }
+
+  }
+
+  let vec = Vec::from(result);
+  if is_pkcs7_padded(&vec) {
+    unpad_pkcs7(&vec).unwrap()
+  } else {
+    vec
+  }
 }
