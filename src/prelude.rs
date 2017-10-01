@@ -4,6 +4,7 @@ use std::io::prelude::*;
 use std::iter::Iterator;
 use std::str;
 
+use byteorder::{LittleEndian, WriteBytesExt};
 use openssl::rand::rand_bytes;
 use openssl::symm::{Cipher, Crypter, Mode, decrypt, encrypt};
 
@@ -223,6 +224,21 @@ fn cipher_no_padding(t: Cipher,
   let rest = c.finalize(&mut out[count..])?;
   out.truncate(count + rest);
   Ok(out)
+}
+
+pub fn aes_128_ctr(key: &[u8], nonce: u64, data: &[u8]) -> Result<Vec<u8>> {
+  let mut result = Vec::new();
+  for n in 0..data.len() / 16 {
+    // generate the keystream
+    let mut keystream = Vec::new();
+    keystream.write_u64::<LittleEndian>(nonce)?;
+    keystream.write_u64::<LittleEndian>(n as u64)?;
+    let keystream_ciphertext = aes_128_ecb_encrypt(key, &keystream)?;
+
+    let current_block = &data[n * 16 .. (n + 1) * 16];
+    result.extend(fixed_xor(current_block, &keystream_ciphertext));
+  }
+  Ok(result)
 }
 
 pub fn pad_pkcs7(data: &[u8], block_len: u8) -> Vec<u8> {

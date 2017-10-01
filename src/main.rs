@@ -247,7 +247,19 @@ fn challenge17() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 17;
+fn challenge18() -> errors::Result<()> {
+  let key = b"YELLOW SUBMARINE";
+  let nonce = 0;
+  let ciphertext = from_base64_string("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==")?;
+  let plaintext_bytes = aes_128_ctr(key, nonce, &ciphertext)?;
+  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+
+  println!("{:?}", plaintext);
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 18;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -292,6 +304,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(15, challenge15);
   challenges_map.insert(16, challenge16);
   challenges_map.insert(17, challenge17);
+  challenges_map.insert(18, challenge18);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {

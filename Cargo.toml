@@ -12,6 +12,7 @@ name = "cryptopals"
 path = "src/main.rs"
 
 [dependencies]
+byteorder = "^1"
 clap = "^2.26"
 error-chain = "^0.11"
 itertools = "^0.6"

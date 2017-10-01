@@ -4,6 +4,7 @@
 
 #[macro_use]
 extern crate error_chain;
+extern crate byteorder;
 extern crate itertools;
 extern crate openssl;
 #[macro_use]
