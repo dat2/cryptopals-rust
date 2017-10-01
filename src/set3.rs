@@ -25,14 +25,15 @@ lazy_static! {
   };
 }
 
-pub fn random_ciphertext() -> Result<Vec<u8>> {
+pub fn random_ciphertext() -> Result<(Vec<u8>, Vec<u8>)> {
   let mut rng = rand::thread_rng();
   let plaintext = rng.choose(&CBC_PADDING_STRINGS).unwrap();
   let padded_plaintext = pad_pkcs7(plaintext, 16);
   println!("input bytes     : {:?}", padded_plaintext);
   aes_128_cbc_encrypt_no_padding(&CBC_PADDING_ORACLE_KEY,
-                                 &CBC_PADDING_ORACLE_IV,
-                                 &padded_plaintext)
+                                  &CBC_PADDING_ORACLE_IV,
+                                  &padded_plaintext)
+    .map(|ciphertext| (ciphertext, CBC_PADDING_ORACLE_IV.to_vec()))
 }
 
 pub fn padding_oracle(ciphertext: &[u8]) -> bool {
@@ -41,25 +42,34 @@ pub fn padding_oracle(ciphertext: &[u8]) -> bool {
     .unwrap_or(false)
 }
 
-pub fn decrypt_ciphertext(ciphertext: &[u8]) -> Result<Vec<u8>> {
+pub fn decrypt_ciphertext(ciphertext: &[u8], _iv: &[u8]) -> Result<Vec<u8>> {
 
-  // decrypt(c) = i  = c-1  ^ p
-  // decrypt(c) = i' = c-1' ^ p
-  // i == i', since c == c
-  // so p = c-1 ^ i
+  // the key idea, is that plaintext xored with previous ciphertext block
+  // creates an intermediate state.
 
-  // the
+  // however, if a server leaks information about the padding of a block
+  // (by returning 500 when a block is not padded for example)
+  // then we can calculate this intermediate state and xor the previous
+  // real ciphertext block with the intermediate state to get the plaintext
+  // instantly
 
-  let result = VecDeque::new();
+  let mut result = VecDeque::new();
 
+  // to calculate the intermediate state, we can send this:
+  // c1' c2 => p1' p2'
+  // where c2 is the last block of ciphertext, and c1' is attacker controlled.
+  // c1 is the second last block of the ciphertext.
+  // the first and only byte (z) that triggers the leak will help us calculate
+  // the intermediate state
+  // i = z ^ p'
+  // p = c1[16] ^ i
   for z in 0..u8::MAX {
     let mut oracle_blocks = vec![0; 15];
     oracle_blocks.push(z);
-    oracle_blocks.extend(ciphertext[ciphertext.len() - 16 ..].to_vec());
+    oracle_blocks.extend(ciphertext[ciphertext.len() - 16..].to_vec());
     if padding_oracle(&oracle_blocks) {
-      let i = z ^ 0x01;
-      println!("c': {} i: {} c: {} p: {}",
-        z, i, ciphertext[15], ciphertext[15] ^ i);
+      result.push_back(ciphertext[ciphertext.len() - 16 - 1] ^ z ^ 0x01);
+      break;
     }
   }
 

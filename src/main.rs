@@ -237,12 +237,12 @@ fn challenge16() -> errors::Result<()> {
 }
 
 fn challenge17() -> errors::Result<()> {
-  let ciphertext = set3::random_ciphertext()?;
+  let (ciphertext, iv) = set3::random_ciphertext()?;
 
-  let plaintext_bytes = set3::decrypt_ciphertext(&ciphertext)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext_bytes = set3::decrypt_ciphertext(&ciphertext, &iv)?;
+  let _plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
 
-  println!("result: {:?}", plaintext);
+  println!("result: {:?}", plaintext_bytes);
 
   Ok(())
 }
