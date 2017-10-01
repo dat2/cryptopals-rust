@@ -29,7 +29,6 @@ pub fn random_ciphertext() -> Result<(Vec<u8>, Vec<u8>)> {
   let mut rng = rand::thread_rng();
   let plaintext = rng.choose(&CBC_PADDING_STRINGS).unwrap();
   let padded_plaintext = pad_pkcs7(plaintext, 16);
-  println!("input : {:?}", unsafe { ::std::str::from_utf8_unchecked(&padded_plaintext) });
   aes_128_cbc_encrypt_no_padding(&CBC_PADDING_ORACLE_KEY,
                                  &CBC_PADDING_ORACLE_IV,
                                  &padded_plaintext)
