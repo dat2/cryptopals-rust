@@ -259,7 +259,18 @@ fn challenge18() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 18;
+fn challenge19() -> errors::Result<()> {
+  let ciphertexts = set3::encrypt_ctr_with_same_nonce()?;
+  let plaintexts = set3::break_ctr_with_same_nonce(&ciphertexts)?;
+
+  for plaintext in &plaintexts {
+    println!("{:?}", unsafe { str::from_utf8_unchecked(plaintext) });
+  }
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 19;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -305,6 +316,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(16, challenge16);
   challenges_map.insert(17, challenge17);
   challenges_map.insert(18, challenge18);
+  challenges_map.insert(19, challenge19);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
