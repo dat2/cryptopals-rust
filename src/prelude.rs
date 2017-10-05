@@ -1,3 +1,4 @@
+use std::cmp;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::io::prelude::*;
@@ -228,14 +229,16 @@ fn cipher_no_padding(t: Cipher,
 
 pub fn aes_128_ctr(key: &[u8], nonce: u64, data: &[u8]) -> Result<Vec<u8>> {
   let mut result = Vec::new();
-  for n in 0..data.len() / 16 {
+  for n in 0..data.len() / 16 + 1 {
     // generate the keystream
     let mut keystream = Vec::new();
     keystream.write_u64::<LittleEndian>(nonce)?;
     keystream.write_u64::<LittleEndian>(n as u64)?;
     let keystream_ciphertext = aes_128_ecb_encrypt(key, &keystream)?;
 
-    let current_block = &data[n * 16 .. (n + 1) * 16];
+    let start = n * 16;
+    let end = cmp::min((n + 1) * 16, data.len());
+    let current_block = &data[start .. end];
     result.extend(fixed_xor(current_block, &keystream_ciphertext));
   }
   Ok(result)
@@ -278,6 +281,14 @@ pub fn intersperse(data: &[&[u8]], between: &[u8]) -> Vec<u8> {
     if i + 1 < data.len() {
       result.extend_from_slice(between);
     }
+  }
+  result
+}
+
+pub fn fmt_binary(data: &[u8]) -> Vec<String> {
+  let mut result = Vec::new();
+  for &b in data {
+    result.push(format!("{:08b}", b));
   }
   result
 }

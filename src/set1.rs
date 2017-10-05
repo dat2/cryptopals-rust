@@ -28,7 +28,7 @@ impl LetterCounter {
     if letter.is_ascii_alphabetic() {
       let letter_entry = self.letters.entry(letter.to_ascii_lowercase() as char).or_insert(0);
       *letter_entry += 1;
-    } else if letter != b' ' {
+    } else if letter != b' ' && letter != b':' && letter != b',' {
       self.penalty += 1;
     }
     self.total_count += 1;

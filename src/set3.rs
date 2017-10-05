@@ -5,6 +5,7 @@ use rand::{self, Rng};
 
 use errors::*;
 use prelude::*;
+use set1::decrypt_single_byte_xor_cipher;
 
 lazy_static! {
   static ref CBC_PADDING_ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
@@ -157,6 +158,45 @@ pub fn encrypt_ctr_with_same_nonce() -> Result<Vec<Vec<u8>>> {
   Ok(result)
 }
 
-pub fn break_ctr_with_same_nonce(_ciphertexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>> {
-  Ok(Vec::new())
+pub fn break_ctr_with_same_nonce(ciphertexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>> {
+
+  // since we used the same nonce for each ciphertext
+  // it means we used a single "fixed xor" key
+  // for each
+
+  // that means, we can transpose the individual bytes of
+  // the ciphertext, same way as we did before
+
+  // however, we have to do it on a block by block basis
+
+  // eg
+  // [ d2 ab 03 ] [ b5 ]
+  // [ f3 e9 b8 ] [ 6f ]
+  //
+  // [ K1 K2 K3 ] [ K4 ]
+  // K1..K4 is fixed xor "key"
+  let max_length = ciphertexts.iter()
+    .map(|c| c.len())
+    .max()
+    .unwrap_or(1);
+
+  let mut keystream_bytes = Vec::new();
+  for i in 0..max_length {
+    let mut single_byte_xor_ciphertext = Vec::new();
+    for ciphertext in ciphertexts {
+      if let Some(&c) = ciphertext.get(i) {
+        single_byte_xor_ciphertext.push(c);
+      }
+    }
+
+    let (_, byte) = decrypt_single_byte_xor_cipher(&single_byte_xor_ciphertext);
+    keystream_bytes.push(byte);
+  }
+
+  let mut result = Vec::new();
+  for ciphertext in ciphertexts {
+    result.push(fixed_xor(ciphertext, &keystream_bytes));
+  }
+
+  Ok(result)
 }
