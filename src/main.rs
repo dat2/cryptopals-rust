@@ -285,7 +285,17 @@ fn challenge20() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 20;
+fn challenge21() -> errors::Result<()> {
+  let mut rng = MersenneTwister::new(0);
+
+  for _ in 0 .. 10 {
+    println!("random number: {}", rng.gen());
+  }
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 21;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -333,6 +343,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(18, challenge18);
   challenges_map.insert(19, challenge19);
   challenges_map.insert(20, challenge20);
+  challenges_map.insert(21, challenge21);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {

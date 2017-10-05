@@ -307,6 +307,114 @@ pub fn fmt_binary(data: &[u8]) -> Vec<String> {
   result
 }
 
+/*
+w: word size (in number of bits)
+n: degree of recurrence
+m: middle word, an offset used in the recurrence relation defining the series x, 1 ≤ m < n
+r: separation point of one word, or the number of bits of the lower bitmask, 0 ≤ r ≤ w - 1
+
+(w,n,m,r) = 32, 624, 397, 31
+
+a: coefficients of the rational normal form twist matrix
+b, c: TGFSR(R) tempering bitmasks
+s, t: TGFSR(R) tempering bit shifts
+u, d, l: additional Mersenne Twister tempering bit shifts/masks
+
+*/
+
+struct MersenneTwisterParams {
+  // W left out
+  w: usize,
+  n: usize,
+  m: usize,
+  a: u32,
+  f: u32,
+  u: u32,
+  d: u32,
+  s: u32,
+  b: u32,
+  t: u32,
+  c: u32,
+  l: u32,
+  lower_mask: u32,
+  upper_mask: u32,
+}
+
+impl MersenneTwisterParams {
+  fn mt19937() -> MersenneTwisterParams {
+    MersenneTwisterParams {
+      w: 32,
+      n: 624,
+      m: 397,
+      a: 0x9908B0DF,
+      f: 1812433253,
+      u: 11, d: 0xFFFFFFFF,
+      s: 7, b: 0x9D2C5680,
+      t: 15, c: 0xEFC60000,
+      l: 18,
+      lower_mask: 0x7fffffff,
+      upper_mask: 0x80000000
+    }
+  }
+}
+
+pub struct MersenneTwister {
+  params: MersenneTwisterParams,
+  mt: Vec<u32>,
+  index: usize
+}
+
+impl MersenneTwister {
+  pub fn new(seed: u32) -> MersenneTwister {
+    MersenneTwister::initialize(seed, MersenneTwisterParams::mt19937())
+  }
+
+  // wrapping_mul needs to be replaced
+  fn initialize(seed: u32, params: MersenneTwisterParams) -> MersenneTwister {
+    let mut mt = vec![0; params.n];
+    mt[0] = seed;
+    for i in 1..params.n {
+      let s = mt[i - 1] ^ (mt[i - 1] >> (params.w - 2));
+      mt[i] = params.f.wrapping_mul(s) + i as u32;
+    }
+    let index = params.n;
+
+    MersenneTwister {
+      params: params,
+      mt: mt,
+      index: index
+    }
+  }
+
+  fn twist(&mut self) {
+    for i in 0 .. self.params.n {
+      let x = (self.mt[i] & self.params.upper_mask) + (self.mt[(i + 1) % self.params.n] & self.params.lower_mask);
+      let mut x_a = x >> 1;
+      if x % 2 != 0 {
+        x_a ^= self.params.a;
+      }
+      self.mt[i] = self.mt[(i + self.params.m) % self.params.n] ^ x_a;
+    }
+    self.index = 0;
+  }
+
+  pub fn gen(&mut self) -> u32 {
+    if self.index >= self.params.n {
+      self.twist();
+    }
+
+    let mut y = self.mt[self.index];
+    y ^= (y >> self.params.u) & self.params.d;
+    y ^= (y << self.params.s) & self.params.b;
+    y ^= (y << self.params.t) & self.params.c;
+    y ^= y >> self.params.l;
+
+    self.index += 1;
+
+    y
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
