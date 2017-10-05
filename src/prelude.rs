@@ -188,6 +188,20 @@ pub fn read_base64_file(file: &mut File) -> Result<Vec<u8>> {
   from_base64_string(&contents.replace("\n", ""))
 }
 
+
+pub fn read_base64_lines(file: &mut File) -> Result<Vec<Vec<u8>>> {
+  let f = BufReader::new(file);
+
+  let mut base64_bytes_list = Vec::new();
+  for line in f.lines() {
+    let string = line?;
+    let base64_bytes = from_base64_string(&string)?;
+    base64_bytes_list.push(base64_bytes);
+  }
+
+  Ok(base64_bytes_list)
+}
+
 pub fn aes_128_ecb_encrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
   encrypt(Cipher::aes_128_ecb(), key, None, data).map_err(|e| e.into())
 }

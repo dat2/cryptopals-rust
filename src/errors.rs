@@ -3,6 +3,7 @@ error_chain! {
     Io(::std::io::Error);
     OpenSsl(::openssl::error::ErrorStack);
     ParseInt(::std::num::ParseIntError);
+    Utf8Error(::std::str::Utf8Error);
   }
 
   errors {

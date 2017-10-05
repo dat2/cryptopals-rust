@@ -5,7 +5,7 @@ use rand::{self, Rng};
 
 use errors::*;
 use prelude::*;
-use set1::decrypt_single_byte_xor_cipher;
+use set1::{decrypt_single_byte_xor_cipher,break_repeating_key_xor};
 
 lazy_static! {
   static ref CBC_PADDING_ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
@@ -104,10 +104,7 @@ pub fn decrypt_ciphertext(ciphertext: &[u8], iv: &[u8]) -> Result<Vec<u8>> {
   }
 }
 
-pub fn encrypt_ctr_with_same_nonce() -> Result<Vec<Vec<u8>>> {
-  let key = random_bytes(16)?;
-  let nonce = 0;
-
+pub fn get_base64_strings() -> Result<Vec<Vec<u8>>> {
   let mut base64_strings = Vec::new();
   base64_strings.push(from_base64_string("SSBoYXZlIG1ldCB0aGVtIGF0IGNsb3NlIG9mIGRheQ==")?);
   base64_strings.push(from_base64_string("Q29taW5nIHdpdGggdml2aWQgZmFjZXM=")?);
@@ -150,9 +147,16 @@ pub fn encrypt_ctr_with_same_nonce() -> Result<Vec<Vec<u8>>> {
   base64_strings.push(from_base64_string("VHJhbnNmb3JtZWQgdXR0ZXJseTo=")?);
   base64_strings.push(from_base64_string("QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4=")?);
 
+  Ok(base64_strings)
+}
+
+pub fn encrypt_plaintexts_with_same_nonce(plaintexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>> {
+  let key = random_bytes(16)?;
+  let nonce = 0;
+
   let mut result = Vec::new();
-  for base64_string in &base64_strings {
-    result.push(aes_128_ctr(&key, nonce, base64_string)?);
+  for plaintext in plaintexts {
+    result.push(aes_128_ctr(&key, nonce, plaintext)?);
   }
 
   Ok(result)
@@ -197,6 +201,31 @@ pub fn break_ctr_with_same_nonce(ciphertexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>
   for ciphertext in ciphertexts {
     result.push(fixed_xor(ciphertext, &keystream_bytes));
   }
+
+  Ok(result)
+}
+
+pub fn break_ctr_with_same_nonce_as_repeating_key_xor(ciphertexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>> {
+
+  let min_length = ciphertexts.iter()
+    .map(|c| c.len())
+    .min()
+    .unwrap_or(1);
+
+  let mut concated_ciphertext = Vec::new();
+  for ciphertext in ciphertexts {
+    println!("{:?}", ciphertext.len());
+    concated_ciphertext.extend(&ciphertext[..min_length]);
+  }
+
+  let (_, key) = break_repeating_key_xor(&concated_ciphertext, min_length .. min_length + 1);
+
+  let mut result = Vec::new();
+  for ciphertext in ciphertexts {
+    result.push(fixed_xor(ciphertext, &key));
+  }
+  // this only extracts min_length bytes for each ciphertext
+  // TODO extract the rest of the plaintexts... but i'm lazy :)
 
   Ok(result)
 }

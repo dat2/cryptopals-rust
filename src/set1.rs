@@ -2,6 +2,7 @@ use std::ascii::AsciiExt;
 use std::cmp::Ordering;
 use std::collections::{HashMap, BTreeSet};
 use std::iter;
+use std::ops::Range;
 
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -28,7 +29,7 @@ impl LetterCounter {
     if letter.is_ascii_alphabetic() {
       let letter_entry = self.letters.entry(letter.to_ascii_lowercase() as char).or_insert(0);
       *letter_entry += 1;
-    } else if letter != b' ' && letter != b':' && letter != b',' {
+    } else if letter != b' ' && letter != b':' && letter != b',' && letter != b'/' {
       self.penalty += 1;
     }
     self.total_count += 1;
@@ -108,9 +109,9 @@ pub fn detect_single_character_xor(xor_bytes: &[Vec<u8>]) -> (Vec<u8>, u8) {
     .unwrap()
 }
 
-pub fn break_repeating_key_xor(input_bytes: &[u8]) -> (Vec<u8>, Vec<u8>) {
+pub fn break_repeating_key_xor(input_bytes: &[u8], key_size_range: Range<usize>) -> (Vec<u8>, Vec<u8>) {
   // figure out the key sizes with the smallest hamming distance
-  let key_sizes: Vec<_> = (2..40)
+  let key_sizes: Vec<_> = key_size_range
     .map(|key_size| {
       let first_keysize_bytes = &input_bytes[0..key_size];
       let second_keysize_bytes = &input_bytes[key_size..(key_size * 2)];

@@ -48,7 +48,7 @@ fn challenge2() -> errors::Result<()> {
 fn challenge3() -> errors::Result<()> {
   let ciphertext_bytes = from_hex_string("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")?;
   let (plaintext_bytes, _) = set1::decrypt_single_byte_xor_cipher(&ciphertext_bytes);
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
 
   println!("result: {}", plaintext);
 
@@ -60,7 +60,7 @@ fn challenge4() -> errors::Result<()> {
   let ciphertext_bytes_list = read_hex_lines(&mut f)?;
 
   let (plaintext_bytes, _) = set1::detect_single_character_xor(&ciphertext_bytes_list);
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
 
   println!("result: {}", plaintext);
 
@@ -85,9 +85,9 @@ fn challenge5() -> errors::Result<()> {
 fn challenge6() -> errors::Result<()> {
   let mut f = File::open("data/6.txt")?;
   let ciphertext = read_base64_file(&mut f)?;
-  let (plaintext_bytes, key_bytes) = set1::break_repeating_key_xor(&ciphertext);
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
-  let key = unsafe { str::from_utf8_unchecked(&key_bytes) };
+  let (plaintext_bytes, key_bytes) = set1::break_repeating_key_xor(&ciphertext, 5..40);
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
+  let key = str::from_utf8(&key_bytes)?;
 
   println!("result: {}", plaintext);
   println!("key: '{}'", key);
@@ -101,7 +101,7 @@ fn challenge7() -> errors::Result<()> {
   let ciphertext = read_base64_file(&mut f)?;
 
   let plaintext_bytes = aes_128_ecb_decrypt(key, &ciphertext)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
 
   println!("result: {}", plaintext);
 
@@ -125,7 +125,7 @@ fn challenge9() -> errors::Result<()> {
 
   let to_pad = b"YELLOW SUBMARINE";
   let padded_bytes = pad_pkcs7(to_pad, 20);
-  let actual = unsafe { str::from_utf8_unchecked(&padded_bytes) };
+  let actual = str::from_utf8(&padded_bytes)?;
 
   println!("expected : {:?}", expected);
   println!("actual   : {:?}", actual);
@@ -142,7 +142,7 @@ fn challenge10() -> errors::Result<()> {
   let ciphertext = read_base64_file(&mut f)?;
 
   let plaintext_bytes = set2::aes_128_cbc_decrypt_manual(key, &iv, &ciphertext)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
 
   println!("result: {}", plaintext);
 
@@ -165,7 +165,7 @@ fn challenge11() -> errors::Result<()> {
 fn challenge12() -> errors::Result<()> {
 
   let plaintext_bytes = set2::decrypt_ecb(set2::encryption_ecb_oracle)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
 
   println!("result: {}", plaintext);
 
@@ -179,7 +179,7 @@ fn challenge13() -> errors::Result<()> {
   let profile = set2::create_admin_profile()?;
   let object = set2::decrypt_profile(&profile)?;
   let actual_bytes = &object[&b"role".to_vec()];
-  let actual = unsafe { str::from_utf8_unchecked(actual_bytes) };
+  let actual = str::from_utf8(actual_bytes)?;
 
   println!("expected : {:?}", expected);
   println!("actual   : {:?}", actual);
@@ -192,7 +192,7 @@ fn challenge13() -> errors::Result<()> {
 fn challenge14() -> errors::Result<()> {
 
   let plaintext_bytes = set2::decrypt_ecb_hard(set2::encryption_ecb_oracle_hard)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes)?;
 
   println!("result: {}", plaintext);
 
@@ -240,7 +240,7 @@ fn challenge17() -> errors::Result<()> {
   let (ciphertext, iv) = set3::random_ciphertext()?;
 
   let plaintext_bytes = set3::decrypt_ciphertext(&ciphertext, &iv)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes);
 
   println!("result: {:?}", plaintext);
 
@@ -252,7 +252,7 @@ fn challenge18() -> errors::Result<()> {
   let nonce = 0;
   let ciphertext = from_base64_string("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==")?;
   let plaintext_bytes = aes_128_ctr(key, nonce, &ciphertext)?;
-  let plaintext = unsafe { str::from_utf8_unchecked(&plaintext_bytes) };
+  let plaintext = str::from_utf8(&plaintext_bytes);
 
   println!("{:?}", plaintext);
 
@@ -260,17 +260,32 @@ fn challenge18() -> errors::Result<()> {
 }
 
 fn challenge19() -> errors::Result<()> {
-  let ciphertexts = set3::encrypt_ctr_with_same_nonce()?;
+  let base64_strings = set3::get_base64_strings()?;
+  let ciphertexts = set3::encrypt_plaintexts_with_same_nonce(&base64_strings)?;
   let plaintexts = set3::break_ctr_with_same_nonce(&ciphertexts)?;
 
-  for plaintext in &plaintexts {
-    println!("{:?}", unsafe { str::from_utf8_unchecked(plaintext) });
+  for plaintext_bytes in &plaintexts {
+    println!("{:?}", str::from_utf8(plaintext_bytes)?);
   }
 
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 19;
+fn challenge20() -> errors::Result<()> {
+  let mut f = File::open("data/20.txt")?;
+  let base64_lines = read_base64_lines(&mut f)?;
+  let ciphertexts = set3::encrypt_plaintexts_with_same_nonce(&base64_lines)?;
+  let plaintexts = set3::break_ctr_with_same_nonce_as_repeating_key_xor(&ciphertexts)?;
+
+  for plaintext_bytes in &plaintexts {
+    println!("{:?}", str::from_utf8(plaintext_bytes)?);
+  }
+
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 20;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -317,6 +332,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(17, challenge17);
   challenges_map.insert(18, challenge18);
   challenges_map.insert(19, challenge19);
+  challenges_map.insert(20, challenge20);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
