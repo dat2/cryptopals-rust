@@ -288,7 +288,7 @@ fn challenge20() -> errors::Result<()> {
 fn challenge21() -> errors::Result<()> {
   let mut rng = MersenneTwister::new(0);
 
-  for _ in 0 .. 10 {
+  for _ in 0..10 {
     println!("random number: {}", rng.gen());
   }
 

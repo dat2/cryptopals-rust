@@ -252,7 +252,7 @@ pub fn aes_128_ctr(key: &[u8], nonce: u64, data: &[u8]) -> Result<Vec<u8>> {
 
     let start = n * 16;
     let end = cmp::min((n + 1) * 16, data.len());
-    let current_block = &data[start .. end];
+    let current_block = &data[start..end];
     result.extend(fixed_xor(current_block, &keystream_ciphertext));
   }
   Ok(result)
@@ -307,20 +307,19 @@ pub fn fmt_binary(data: &[u8]) -> Vec<String> {
   result
 }
 
-/*
-w: word size (in number of bits)
-n: degree of recurrence
-m: middle word, an offset used in the recurrence relation defining the series x, 1 ≤ m < n
-r: separation point of one word, or the number of bits of the lower bitmask, 0 ≤ r ≤ w - 1
-
-(w,n,m,r) = 32, 624, 397, 31
-
-a: coefficients of the rational normal form twist matrix
-b, c: TGFSR(R) tempering bitmasks
-s, t: TGFSR(R) tempering bit shifts
-u, d, l: additional Mersenne Twister tempering bit shifts/masks
-
-*/
+// w: word size (in number of bits)
+// n: degree of recurrence
+// m: middle word, an offset used in the recurrence relation defining the series x, 1 ≤ m < n
+// r: separation point of one word, or the number of bits of the lower bitmask, 0 ≤ r ≤ w - 1
+//
+// (w,n,m,r) = 32, 624, 397, 31
+//
+// a: coefficients of the rational normal form twist matrix
+// b, c: TGFSR(R) tempering bitmasks
+// s, t: TGFSR(R) tempering bit shifts
+// u, d, l: additional Mersenne Twister tempering bit shifts/masks
+//
+//
 
 struct MersenneTwisterParams {
   // W left out
@@ -348,12 +347,15 @@ impl MersenneTwisterParams {
       m: 397,
       a: 0x9908B0DF,
       f: 1812433253,
-      u: 11, d: 0xFFFFFFFF,
-      s: 7, b: 0x9D2C5680,
-      t: 15, c: 0xEFC60000,
+      u: 11,
+      d: 0xFFFFFFFF,
+      s: 7,
+      b: 0x9D2C5680,
+      t: 15,
+      c: 0xEFC60000,
       l: 18,
       lower_mask: 0x7fffffff,
-      upper_mask: 0x80000000
+      upper_mask: 0x80000000,
     }
   }
 }
@@ -361,7 +363,7 @@ impl MersenneTwisterParams {
 pub struct MersenneTwister {
   params: MersenneTwisterParams,
   mt: Vec<u32>,
-  index: usize
+  index: usize,
 }
 
 impl MersenneTwister {
@@ -382,13 +384,14 @@ impl MersenneTwister {
     MersenneTwister {
       params: params,
       mt: mt,
-      index: index
+      index: index,
     }
   }
 
   fn twist(&mut self) {
-    for i in 0 .. self.params.n {
-      let x = (self.mt[i] & self.params.upper_mask) + (self.mt[(i + 1) % self.params.n] & self.params.lower_mask);
+    for i in 0..self.params.n {
+      let x = (self.mt[i] & self.params.upper_mask) +
+              (self.mt[(i + 1) % self.params.n] & self.params.lower_mask);
       let mut x_a = x >> 1;
       if x % 2 != 0 {
         x_a ^= self.params.a;

@@ -5,7 +5,7 @@ use rand::{self, Rng};
 
 use errors::*;
 use prelude::*;
-use set1::{decrypt_single_byte_xor_cipher,break_repeating_key_xor};
+use set1::{decrypt_single_byte_xor_cipher, break_repeating_key_xor};
 
 lazy_static! {
   static ref CBC_PADDING_ORACLE_KEY: Vec<u8> = random_bytes(16).unwrap();
@@ -205,7 +205,8 @@ pub fn break_ctr_with_same_nonce(ciphertexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>
   Ok(result)
 }
 
-pub fn break_ctr_with_same_nonce_as_repeating_key_xor(ciphertexts: &[Vec<u8>]) -> Result<Vec<Vec<u8>>> {
+pub fn break_ctr_with_same_nonce_as_repeating_key_xor(ciphertexts: &[Vec<u8>])
+                                                      -> Result<Vec<Vec<u8>>> {
 
   let min_length = ciphertexts.iter()
     .map(|c| c.len())
@@ -218,7 +219,7 @@ pub fn break_ctr_with_same_nonce_as_repeating_key_xor(ciphertexts: &[Vec<u8>]) -
     concated_ciphertext.extend(&ciphertext[..min_length]);
   }
 
-  let (_, key) = break_repeating_key_xor(&concated_ciphertext, min_length .. min_length + 1);
+  let (_, key) = break_repeating_key_xor(&concated_ciphertext, min_length..min_length + 1);
 
   let mut result = Vec::new();
   for ciphertext in ciphertexts {

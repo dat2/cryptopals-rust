@@ -109,10 +109,11 @@ pub fn detect_single_character_xor(xor_bytes: &[Vec<u8>]) -> (Vec<u8>, u8) {
     .unwrap()
 }
 
-pub fn break_repeating_key_xor(input_bytes: &[u8], key_size_range: Range<usize>) -> (Vec<u8>, Vec<u8>) {
+pub fn break_repeating_key_xor(input_bytes: &[u8],
+                               key_size_range: Range<usize>)
+                               -> (Vec<u8>, Vec<u8>) {
   // figure out the key sizes with the smallest hamming distance
-  let key_sizes: Vec<_> = key_size_range
-    .map(|key_size| {
+  let key_sizes: Vec<_> = key_size_range.map(|key_size| {
       let first_keysize_bytes = &input_bytes[0..key_size];
       let second_keysize_bytes = &input_bytes[key_size..(key_size * 2)];
       let third_keysize_bytes = &input_bytes[(key_size * 2)..(key_size * 3)];
