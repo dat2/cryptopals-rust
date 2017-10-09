@@ -322,6 +322,7 @@ pub fn fmt_binary(data: &[u8]) -> Vec<String> {
 //
 //
 
+#[derive(Clone)]
 struct MersenneTwisterParams {
   // W left out
   w: usize,
@@ -361,6 +362,7 @@ impl MersenneTwisterParams {
   }
 }
 
+#[derive(Clone)]
 pub struct MersenneTwister {
   params: MersenneTwisterParams,
   mt: Vec<u32>,
@@ -418,12 +420,16 @@ impl MersenneTwister {
     y
   }
 
-  pub fn as_vec(mut self) -> Vec<u32> {
+  pub fn tap(mut self) -> Vec<u32> {
     let mut result = Vec::new();
     for _ in 0..self.params.n {
       result.push(self.gen());
     }
     result
+  }
+
+  pub fn keystream(self) -> MersenneTwisterKeystream {
+    MersenneTwisterKeystream::new(self)
   }
 }
 
@@ -436,6 +442,64 @@ impl From<Vec<u32>> for MersenneTwister {
       mt: mt,
       index: 0,
     }
+  }
+}
+
+enum KeystreamState {
+  One,
+  Two,
+  Three,
+  Four
+}
+
+impl KeystreamState {
+  fn next(&self) -> KeystreamState {
+    use self::KeystreamState::*;
+
+    match self {
+      &One => Two,
+      &Two => Three,
+      &Three => Four,
+      &Four => One
+    }
+  }
+}
+
+pub struct MersenneTwisterKeystream {
+  mt: MersenneTwister,
+  output: u32,
+  state: KeystreamState
+}
+
+impl MersenneTwisterKeystream {
+  fn new(mut mt: MersenneTwister) -> MersenneTwisterKeystream {
+    let output = mt.gen();
+    MersenneTwisterKeystream {
+      mt: mt,
+      output: output,
+      state: KeystreamState::One
+    }
+  }
+}
+
+impl Iterator for MersenneTwisterKeystream {
+  type Item = u8;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    use self::KeystreamState::*;
+
+    let result = match self.state {
+      One => (self.output & 0xFF000000) >> 24,
+      Two => (self.output & 0x00FF0000) >> 16,
+      Three => (self.output & 0x0000FF00) >> 8,
+      Four => {
+        let result = self.output & 0x000000FF;
+        self.output = self.mt.gen();
+        result
+      }
+    } as u8;
+    self.state = self.state.next();
+    Some(result)
   }
 }
 

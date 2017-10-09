@@ -323,11 +323,11 @@ fn challenge22() -> errors::Result<()> {
 
 fn challenge23() -> errors::Result<()> {
   let rng = MersenneTwister::new(0);
-  let expected = rng.as_vec();
+  let expected = rng.tap();
 
   let state = set3::crack_mt19337_state(&expected);
   let rng = MersenneTwister::from(state);
-  let actual = rng.as_vec();
+  let actual = rng.tap();
 
   println!("expected : {:?}", expected);
   println!("actual   : {:?}", actual);
@@ -337,7 +337,12 @@ fn challenge23() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 23;
+fn challenge24() -> errors::Result<()> {
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 24;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -388,6 +393,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(21, challenge21);
   challenges_map.insert(22, challenge22);
   challenges_map.insert(23, challenge23);
+  challenges_map.insert(24, challenge24);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
