@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{u8, u16};
 
 use rand::{self, Rng};
@@ -320,4 +321,32 @@ pub fn break_mt19937_ciphertext(ciphertext: &[u8]) -> (u16, Vec<u8>) {
     .map(|seed| (seed, mt19937_fixed_xor(seed, ciphertext)))
     .find_any(|&(_, ref plaintext)| &plaintext[plaintext.len() - 14..] == b"AAAAAAAAAAAAAA")
     .unwrap()
+}
+
+pub fn generate_password_reset_token() -> Result<Vec<u8>> {
+  let mut thread_rng = rand::thread_rng();
+
+  let prefix_len = Range::new(0, u8::MAX).ind_sample(&mut thread_rng);
+  let mut plaintext = random_bytes(prefix_len as usize)?;
+  plaintext.extend(b"user_id=123456&expires=1000");
+
+  let unix_duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
+  let unix_timestamp = unix_duration.as_secs() as u32;
+
+  let key: Vec<_> = MersenneTwister::new(unix_timestamp).keystream().take(plaintext.len()).collect();
+  Ok(fixed_xor(&plaintext, &key))
+}
+
+pub fn is_password_token_using_mt19937(token: &[u8]) -> Result<bool> {
+  let unix_duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
+  let unix_timestamp = unix_duration.as_secs() as u32;
+
+  Ok((0u32..10000u32)
+    .into_par_iter()
+    .map(|i| {
+      let key: Vec<_> = MersenneTwister::new(unix_timestamp - i).keystream().take(token.len()).collect();
+      fixed_xor(token, &key)
+    })
+    .find_any(|plaintext| plaintext.windows(b"user_id=".len()).position(|window| window == b"user_id=").is_some())
+    .is_some())
 }

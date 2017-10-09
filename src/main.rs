@@ -346,6 +346,14 @@ fn challenge24() -> errors::Result<()> {
 
   assert_eq!(expected_seed, actual_seed);
 
+  let password_reset_token = set3::generate_password_reset_token()?;
+  let is_using_mt19937 = set3::is_password_token_using_mt19937(&password_reset_token)?;
+
+  println!("expected : {:?}", true);
+  println!("actual   : {:?}", is_using_mt19937);
+
+  assert!(is_using_mt19937);
+
   Ok(())
 }
 
