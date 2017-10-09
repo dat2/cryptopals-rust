@@ -230,3 +230,18 @@ pub fn break_ctr_with_same_nonce_as_repeating_key_xor(ciphertexts: &[Vec<u8>])
 
   Ok(result)
 }
+
+pub fn mersenne_rng(seed: u32) -> u32 {
+  MersenneTwister::new(seed).gen() as u32
+}
+
+pub fn crack_mt19937_seed(output: u32, unix_timestamp: u32) -> u32 {
+  (0..10000)
+    .map(|i| {
+      let mut rng = MersenneTwister::new(unix_timestamp - i);
+      (unix_timestamp - i, rng.gen() as u32)
+    })
+    .find(|&(_, out)| out == output)
+    .unwrap()
+    .0
+}

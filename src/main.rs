@@ -1,14 +1,17 @@
 #[macro_use]
 extern crate error_chain;
 extern crate clap;
+extern crate rand;
 
 extern crate cryptopals;
 
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::str;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::{App, Arg};
+use rand::distributions::{IndependentSample, Range};
 
 use cryptopals::prelude::*;
 use cryptopals::errors;
@@ -295,7 +298,30 @@ fn challenge21() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 21;
+fn challenge22() -> errors::Result<()> {
+  let unix_duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
+  let unix_timestamp = unix_duration.as_secs() as u32;
+
+  let mut thread_rng = rand::thread_rng();
+  let range = Range::new(40, 1000);
+  let delay1 = range.ind_sample(&mut thread_rng);
+  let delay2 = range.ind_sample(&mut thread_rng);
+
+  let seed = unix_timestamp + delay1;
+  let output = set3::mersenne_rng(seed);
+
+  let expected = seed;
+  let actual = set3::crack_mt19937_seed(output, seed + delay2);
+
+  println!("expected : {:?}", expected);
+  println!("actual   : {:?}", actual);
+
+  assert_eq!(expected, actual);
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 22;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -344,6 +370,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(19, challenge19);
   challenges_map.insert(20, challenge20);
   challenges_map.insert(21, challenge21);
+  challenges_map.insert(22, challenge22);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
