@@ -1,4 +1,5 @@
 use std::cmp;
+use std::convert::From;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::io::prelude::*;
@@ -415,6 +416,26 @@ impl MersenneTwister {
     self.index += 1;
 
     y
+  }
+
+  pub fn as_vec(mut self) -> Vec<u32> {
+    let mut result = Vec::new();
+    for _ in 0..self.params.n {
+      result.push(self.gen());
+    }
+    result
+  }
+}
+
+impl From<Vec<u32>> for MersenneTwister {
+  fn from(mt: Vec<u32>) -> MersenneTwister {
+    assert_eq!(mt.len(), 624);
+
+    MersenneTwister {
+      params: MersenneTwisterParams::mt19937(),
+      mt: mt,
+      index: 0,
+    }
   }
 }
 

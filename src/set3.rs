@@ -245,3 +245,53 @@ pub fn crack_mt19937_seed(output: u32, unix_timestamp: u32) -> u32 {
     .unwrap()
     .0
 }
+
+pub fn crack_mt19337_state(outputs: &[u32]) -> Vec<u32> {
+  outputs.iter()
+    .map(|&output| {
+      // state = [seed, 1812433253 * seed ^ (seed >> 30) + 1, ...], index = 624
+      // x_a = (seed & 0x80000000 + (1812433253 * seed ^ (seed >> 30) + 1) & 0x7fffffff) >> 1
+      // state[0] = if x_a % 2 != 0 { x_a ^ 0x9908B0DF } else { x_a }
+
+      // y = state[0]
+
+      let mut y = output;
+
+      // (4) y = y ^ (y >> 18)
+      // since more than half of the bits are the same, its very easy to recover
+      y ^= y >> 18;
+
+      // (3) y = y ^ ((y << 15) & 0xEFC60000)
+      // since more than half of the bits are the same, its very easy to recover again
+      y ^= (y << 15) & 0xEFC60000;
+
+      // (2) y = y ^ ((y << 7) & 0x9D2C5680
+      // this is harder to recover, need to rebuild it up from the right side
+      let mut y2 = y & 0x0000007F;
+      for i in 7..32 {
+        let bit_mask = 1 << i;
+        let b_bit = 0x9D2C5680 & bit_mask;
+        let y2_shifted_bit = (y2 << 7) & bit_mask;
+        let mask = y2_shifted_bit & b_bit;
+        let y2_bit = (y ^ mask) & bit_mask;
+
+        y2 ^= y2_bit;
+      }
+      y = y2;
+
+      // (1) y = y ^ (y >> 11)
+      // this is harder to recover
+      let mut y1 = y & 0xFFE00000;
+      for i in 12..33 {
+        let bit_mask = 1 << (32 - i);
+        let y1_shifted_bit = (y1 >> 11) & bit_mask;
+        let y_masked_bit = y & bit_mask;
+        let y_bit = y1_shifted_bit ^ y_masked_bit;
+        y1 ^= y_bit;
+      }
+      y = y1;
+
+      y
+    })
+    .collect::<Vec<_>>()
+}
