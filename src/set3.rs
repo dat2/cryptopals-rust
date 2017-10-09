@@ -1,7 +1,9 @@
 use std::collections::VecDeque;
-use std::u8;
+use std::{u8, u16};
 
 use rand::{self, Rng};
+use rand::distributions::{IndependentSample, Range};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use errors::*;
 use prelude::*;
@@ -246,7 +248,7 @@ pub fn crack_mt19937_seed(output: u32, unix_timestamp: u32) -> u32 {
     .0
 }
 
-pub fn crack_mt19337_state(outputs: &[u32]) -> Vec<u32> {
+pub fn crack_mt19937_state(outputs: &[u32]) -> Vec<u32> {
   outputs.iter()
     .map(|&output| {
       // state = [seed, 1812433253 * seed ^ (seed >> 30) + 1, ...], index = 624
@@ -294,4 +296,28 @@ pub fn crack_mt19337_state(outputs: &[u32]) -> Vec<u32> {
       y
     })
     .collect::<Vec<_>>()
+}
+
+pub fn mt19937_fixed_xor(seed: u16, data: &[u8]) -> Vec<u8> {
+  let key: Vec<_> = MersenneTwister::new(seed as u32).keystream().take(data.len()).collect();
+  fixed_xor(data, &key)
+}
+
+pub fn get_mt19937_ciphertext() -> Result<(u16, Vec<u8>)> {
+  let mut thread_rng = rand::thread_rng();
+
+  let prefix_len = Range::new(0, u8::MAX).ind_sample(&mut thread_rng);
+  let mut plaintext = random_bytes(prefix_len as usize)?;
+  plaintext.extend(b"AAAAAAAAAAAAAA");
+
+  let seed = Range::new(0, u16::MAX).ind_sample(&mut thread_rng);
+  Ok((seed, mt19937_fixed_xor(seed, &plaintext)))
+}
+
+pub fn break_mt19937_ciphertext(ciphertext: &[u8]) -> (u16, Vec<u8>) {
+  (0..u16::MAX)
+    .into_par_iter()
+    .map(|seed| (seed, mt19937_fixed_xor(seed, ciphertext)))
+    .find_any(|&(_, ref plaintext)| &plaintext[plaintext.len() - 14..] == b"AAAAAAAAAAAAAA")
+    .unwrap()
 }

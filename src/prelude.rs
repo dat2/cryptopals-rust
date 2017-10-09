@@ -380,7 +380,7 @@ impl MersenneTwister {
     mt[0] = seed;
     for i in 1..params.n {
       let s = mt[i - 1] ^ (mt[i - 1] >> (params.w - 2));
-      mt[i] = params.f.wrapping_mul(s) + i as u32;
+      mt[i] = params.f.wrapping_mul(s).wrapping_add(i as u32);
     }
     let index = params.n;
 
@@ -449,7 +449,7 @@ enum KeystreamState {
   One,
   Two,
   Three,
-  Four
+  Four,
 }
 
 impl KeystreamState {
@@ -460,7 +460,7 @@ impl KeystreamState {
       &One => Two,
       &Two => Three,
       &Three => Four,
-      &Four => One
+      &Four => One,
     }
   }
 }
@@ -468,7 +468,7 @@ impl KeystreamState {
 pub struct MersenneTwisterKeystream {
   mt: MersenneTwister,
   output: u32,
-  state: KeystreamState
+  state: KeystreamState,
 }
 
 impl MersenneTwisterKeystream {
@@ -477,7 +477,7 @@ impl MersenneTwisterKeystream {
     MersenneTwisterKeystream {
       mt: mt,
       output: output,
-      state: KeystreamState::One
+      state: KeystreamState::One,
     }
   }
 }

@@ -3,7 +3,7 @@ A rust implementation of the cryptopals challenges.
 
 ## Building
 - install [rustup](https://www.rustup.rs/)
-- `cargo build` or `cargo build --release` (release is slow)
+- `cargo build` or `cargo build --release` (building release is slow, but runs much faster)
 - `./target/debug/cryptopals [OPTIONS]` or `./target/release/cryptopals [OPTIONS]`
 - make sure you run this from the root of this repo, as it requires the `data` folder.
 

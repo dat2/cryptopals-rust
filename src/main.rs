@@ -325,7 +325,7 @@ fn challenge23() -> errors::Result<()> {
   let rng = MersenneTwister::new(0);
   let expected = rng.tap();
 
-  let state = set3::crack_mt19337_state(&expected);
+  let state = set3::crack_mt19937_state(&expected);
   let rng = MersenneTwister::from(state);
   let actual = rng.tap();
 
@@ -338,6 +338,13 @@ fn challenge23() -> errors::Result<()> {
 }
 
 fn challenge24() -> errors::Result<()> {
+  let (expected_seed, ciphertext) = set3::get_mt19937_ciphertext()?;
+  let (actual_seed, _plaintext) = set3::break_mt19937_ciphertext(&ciphertext);
+
+  println!("expected : {:?}", expected_seed);
+  println!("actual   : {:?}", actual_seed);
+
+  assert_eq!(expected_seed, actual_seed);
 
   Ok(())
 }
