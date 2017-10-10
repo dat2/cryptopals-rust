@@ -14,10 +14,7 @@ use clap::{App, Arg};
 use rand::distributions::{IndependentSample, Range};
 
 use cryptopals::prelude::*;
-use cryptopals::errors;
-use cryptopals::set1;
-use cryptopals::set2;
-use cryptopals::set3;
+use cryptopals::{errors, set1, set2, set3, set4};
 
 fn challenge1() -> errors::Result<()> {
 
@@ -357,7 +354,27 @@ fn challenge24() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 24;
+fn challenge25() -> errors::Result<()> {
+  let key = b"YELLOW SUBMARINE";
+  let mut f = File::open("data/25.txt")?;
+  let ecb_encrypted_file = read_base64_file(&mut f)?;
+  let recovered_plaintext = aes_128_ecb_decrypt(key, &ecb_encrypted_file)?;
+
+  let ciphertext = set4::encrypt_random_access_ctr(&recovered_plaintext)?;
+  let plaintext = set4::break_random_access_ctr(&ciphertext)?;
+
+  let expected = str::from_utf8(&recovered_plaintext)?;
+  let actual = str::from_utf8(&plaintext)?;
+
+  println!("expected : {}", expected);
+  println!("actual   : {}", actual);
+
+  assert_eq!(expected, actual);
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 25;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -409,6 +426,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(22, challenge22);
   challenges_map.insert(23, challenge23);
   challenges_map.insert(24, challenge24);
+  challenges_map.insert(25, challenge25);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {

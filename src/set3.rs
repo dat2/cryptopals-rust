@@ -333,7 +333,8 @@ pub fn generate_password_reset_token() -> Result<Vec<u8>> {
   let unix_duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
   let unix_timestamp = unix_duration.as_secs() as u32;
 
-  let key: Vec<_> = MersenneTwister::new(unix_timestamp).keystream().take(plaintext.len()).collect();
+  let key: Vec<_> =
+    MersenneTwister::new(unix_timestamp).keystream().take(plaintext.len()).collect();
   Ok(fixed_xor(&plaintext, &key))
 }
 
@@ -344,9 +345,12 @@ pub fn is_password_token_using_mt19937(token: &[u8]) -> Result<bool> {
   Ok((0u32..10000u32)
     .into_par_iter()
     .map(|i| {
-      let key: Vec<_> = MersenneTwister::new(unix_timestamp - i).keystream().take(token.len()).collect();
+      let key: Vec<_> =
+        MersenneTwister::new(unix_timestamp - i).keystream().take(token.len()).collect();
       fixed_xor(token, &key)
     })
-    .find_any(|plaintext| plaintext.windows(b"user_id=".len()).position(|window| window == b"user_id=").is_some())
+    .find_any(|plaintext| {
+      plaintext.windows(b"user_id=".len()).position(|window| window == b"user_id=").is_some()
+    })
     .is_some())
 }
