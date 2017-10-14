@@ -101,3 +101,55 @@ pub fn inserted_admin_into_userdata(ciphertext: &[u8]) -> Result<bool> {
   let plaintext = aes_128_ctr(&CTR_BITFLIPPING_KEY, *CTR_BITFLIPPING_NONCE, ciphertext)?;
   Ok(plaintext.split(|&b| b == b';').any(|chunk| chunk == b"admin=true"))
 }
+
+// challenge 27
+lazy_static! {
+  pub static ref CBC_KEY_IV: Vec<u8> = b"YELLOW SUBMARINE".to_vec();
+}
+
+pub fn encrypt_userdata_with_same_key_iv(userdata: &[u8]) -> Result<Vec<u8>> {
+  let prefix = b"comment1=cooking%20MCs;userdata=";
+  let suffix = b";comment2=%20like%20a%20pound%20of%20bacon";
+
+  let removed_semicolons: Vec<_> = userdata.split(|&b| b == b';').collect();
+  let quoted_semicolons = intersperse(&removed_semicolons, b"%3B");
+  let removed_equals: Vec<_> = quoted_semicolons.split(|&b| b == b'=').collect();
+  let quoted_userdata = intersperse(&removed_equals, b"%3D");
+
+  let mut plaintext = Vec::new();
+  plaintext.extend_from_slice(prefix);
+  plaintext.extend(quoted_userdata);
+  plaintext.extend_from_slice(suffix);
+
+  aes_128_cbc_encrypt(&CBC_KEY_IV, &CBC_KEY_IV, &plaintext)
+}
+
+#[derive(Debug)]
+struct HighAsciiBytesFound(Vec<u8>);
+
+fn decrypt_with_same_key_iv(ciphertext: &[u8]) -> Result<Option<HighAsciiBytesFound>> {
+  let plaintext = aes_128_cbc_decrypt(&CBC_KEY_IV, &CBC_KEY_IV, ciphertext)?;
+
+  for &c in &plaintext {
+    if c > 127 {
+      return Ok(Some(HighAsciiBytesFound(plaintext.clone())))
+    }
+  }
+
+  Ok(None)
+}
+
+pub fn recover_key(ciphertext: &[u8]) -> Result<Vec<u8>> {
+
+  let mut modified_message = Vec::new();
+  modified_message.extend_from_slice(&ciphertext[..16]);
+  modified_message.extend_from_slice(&vec![0; 16]);
+  modified_message.extend_from_slice(&ciphertext[..16]);
+  modified_message.extend_from_slice(&ciphertext[48..]);
+
+  if let Some(HighAsciiBytesFound(plaintext)) = decrypt_with_same_key_iv(&modified_message)? {
+    Ok(fixed_xor(&plaintext[..16], &plaintext[32..48]))
+  } else {
+    Ok(Vec::new())
+  }
+}
