@@ -374,7 +374,19 @@ fn challenge25() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 25;
+fn challenge26() -> errors::Result<()> {
+
+  let encrypted_userdata = set4::encrypt_userdata(b";admin=true;")?;
+  let inserted_admin = set4::insert_admin_into_userdata(&encrypted_userdata);
+  let has_inserted_admin = set4::inserted_admin_into_userdata(&inserted_admin)?;
+
+  println!("result: {:?}", has_inserted_admin);
+  assert!(has_inserted_admin);
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 26;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -427,6 +439,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(23, challenge23);
   challenges_map.insert(24, challenge24);
   challenges_map.insert(25, challenge25);
+  challenges_map.insert(26, challenge26);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {
