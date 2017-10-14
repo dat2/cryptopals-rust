@@ -11,6 +11,7 @@ extern crate openssl;
 extern crate lazy_static;
 extern crate rand;
 extern crate rayon;
+extern crate sha1;
 
 pub mod errors;
 pub mod prelude;

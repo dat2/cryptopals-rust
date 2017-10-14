@@ -401,7 +401,26 @@ fn challenge27() -> errors::Result<()> {
   Ok(())
 }
 
-static MAX_CHALLENGE: usize = 27;
+fn challenge28() -> errors::Result<()> {
+
+  let mac1 = set4::sign(b"super secret key", b"super secret message 1");
+  let mac2 = set4::sign(b"super secret key", b"super secret message 2");
+
+  println!("mac 1      : {}", to_hex_string(&mac1));
+  println!("mac 2      : {}", to_hex_string(&mac2));
+
+  assert_ne!(mac1, mac2);
+
+  let mac_forged = set4::sign(b"", b"super secret message 1");
+
+  println!("mac forged : {}", to_hex_string(&mac_forged));
+
+  assert_ne!(mac1, mac_forged);
+
+  Ok(())
+}
+
+static MAX_CHALLENGE: usize = 28;
 
 fn challenge_validator(arg: String) -> Result<(), String> {
   arg.parse::<usize>()
@@ -456,6 +475,7 @@ fn run() -> errors::Result<()> {
   challenges_map.insert(25, challenge25);
   challenges_map.insert(26, challenge26);
   challenges_map.insert(27, challenge27);
+  challenges_map.insert(28, challenge28);
 
   // use arguments to determine what to run
   if let Some(challenge_string) = matches.value_of("challenge") {

@@ -3,6 +3,7 @@ use std::u64;
 
 use rand;
 use rand::distributions::{IndependentSample, Range};
+use sha1::Sha1;
 
 use errors::*;
 use prelude::*;
@@ -132,7 +133,7 @@ fn decrypt_with_same_key_iv(ciphertext: &[u8]) -> Result<Option<HighAsciiBytesFo
 
   for &c in &plaintext {
     if c > 127 {
-      return Ok(Some(HighAsciiBytesFound(plaintext.clone())))
+      return Ok(Some(HighAsciiBytesFound(plaintext.clone())));
     }
   }
 
@@ -152,4 +153,11 @@ pub fn recover_key(ciphertext: &[u8]) -> Result<Vec<u8>> {
   } else {
     Ok(Vec::new())
   }
+}
+
+pub fn sign(secret: &[u8], message: &[u8]) -> Vec<u8> {
+  let mut m = Sha1::new();
+  m.update(secret);
+  m.update(message);
+  m.digest().bytes().to_vec()
 }
